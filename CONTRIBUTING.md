@@ -11,6 +11,27 @@ focused contributions help most.
 - Check the issue list. If your idea has no issue, open one first so we can agree on
   scope before you write code.
 
+## Good first steps
+
+New here? Start with an issue labelled
+[`good first issue`](https://github.com/suryalionael/strikelens/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
+They are small, well scoped, and touch only one part of the repo. At the time of
+writing:
+
+- #3: collect a few public kickboxing clips for local practice (no code)
+- #20: referee filter using a shirt colour heuristic (Python, small and testable)
+- #30: user guide for Freefly's team (docs)
+
+Other easy ways to help:
+
+- Run the quick start in [docs/dev-setup.md](docs/dev-setup.md) and open an issue
+  for anything that does not work as written.
+- Read [docs/stat-definitions.md](docs/stat-definitions.md) and point out edge cases
+  we missed.
+
+The [StrikeLens Roadmap](https://github.com/users/suryalionael/projects/5) board shows
+what is ready to pick up.
+
 ## Workflow
 
 1. Pick an issue and comment that you are taking it.

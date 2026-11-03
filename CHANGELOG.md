@@ -7,11 +7,30 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.0.1] - 2026-11-03
+
+Foundation release. No product features yet.
+
 ### Added
 
-- Repo structure, licence, and community files.
-- Tagger skeleton (React, Vite, TypeScript, Tailwind) with one test.
-- API skeleton (FastAPI) with `GET /health` and pure stat functions.
-- CV package skeleton with a `strikelens-cv --version` CLI.
-- Shared JSON Schemas for tags, fights, and fighters.
-- GitHub Actions CI for tagger, API, and CV.
+- Repo structure, AGPL-3.0 licence, Code of Conduct, contributing guide, and
+  security policy.
+- Tagger skeleton (React, Vite, TypeScript strict, Tailwind) with a placeholder
+  page and one Vitest test.
+- API skeleton (FastAPI) with `GET /health`.
+- Pure stat functions `accuracy`, `strikes_per_minute`, and `attempts_by_round`,
+  tested against Freefly Metrics' published figures.
+- CV package skeleton with a `strikelens-cv --version` CLI. Heavy CV dependencies
+  are optional extras.
+- Shared JSON Schemas for tags, fights, and fighters, validated in API tests.
+- GitHub Actions CI with tagger, API, and CV jobs.
+- Pre-commit hooks: Ruff, Prettier, file hygiene, and a 5 MB file size limit.
+- Issue forms, PR template, and CODEOWNERS.
+- Docs: vision, architecture, tag schema and hotkeys, stat definitions with open
+  questions for Freefly, data policy, roadmap, dev setup, Claude Code workflow,
+  and Freefly collaboration notes.
+- ADRs 0001-0004: monorepo, AGPL licence, human in the loop, MediaPipe for pose.
+- Labels, milestones, 35 issues, and the StrikeLens Roadmap project board.
+
+[Unreleased]: https://github.com/suryalionael/strikelens/compare/v0.0.1...HEAD
+[0.0.1]: https://github.com/suryalionael/strikelens/releases/tag/v0.0.1
