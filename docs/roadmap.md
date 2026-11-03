@@ -79,5 +79,26 @@ detection from the broadcast clock. Picked up only when the gates are on track.
 
 ## Project board
 
-The GitHub Project "StrikeLens Roadmap" holds every issue with Status, Phase,
-dates, and Size. The link is added here once the board exists.
+The GitHub Project **[StrikeLens Roadmap](https://github.com/users/suryalionael/projects/5)**
+holds every issue.
+
+| View | Use it for |
+|---|---|
+| [Kanban](https://github.com/users/suryalionael/projects/5/views/2) | Day-to-day work. Columns are the Status field |
+| [Timeline](https://github.com/users/suryalionael/projects/5/views/3) | Phases over time, using Start date and Target date |
+| [Table](https://github.com/users/suryalionael/projects/5/views/1) | Bulk edits of fields |
+
+Fields:
+
+| Field | Values |
+|---|---|
+| Status | Backlog, Ready, In progress, In review, Done |
+| Phase | Phase 0 to Phase 4, Research |
+| Start date, Target date | Planned dates inside the phase, dependencies first |
+| Size | S (an evening), M (a few sessions), L (most of a week) |
+
+Research issues have no dates. They get dates only when picked up.
+
+Status flow follows the feature loop in
+[working-with-claude-code.md](working-with-claude-code.md): Ready, In progress,
+In review (PR open), Done (merged).
