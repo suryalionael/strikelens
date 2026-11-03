@@ -1,0 +1,36 @@
+name: Bug
+description: Something does not work as documented.
+title: "bug: "
+labels: ["type:bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, browser, Node and Python versions, commit hash.
+  - type: markdown
+    attributes:
+      value: |
+        Do not attach fight footage or frames. Describe the moment by timestamp instead.

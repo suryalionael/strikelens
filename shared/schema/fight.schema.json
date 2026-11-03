@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/suryalionael/strikelens/shared/schema/fight.schema.json",
+  "title": "Fight",
+  "description": "One fight: who fought, which video, and where each round starts and ends in that video.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "event", "date", "red_fighter_id", "blue_fighter_id", "scheduled_rounds", "rounds"],
+  "properties": {
+    "id": { "type": "string", "format": "uuid" },
+    "event": { "description": "Event name, e.g. \"Byon Combat 40\".", "type": "string", "minLength": 1 },
+    "date": { "type": "string", "format": "date" },
+    "red_fighter_id": { "type": "string", "format": "uuid" },
+    "blue_fighter_id": { "type": "string", "format": "uuid" },
+    "weight_class": { "type": ["string", "null"] },
+    "scheduled_rounds": { "type": "integer", "minimum": 1 },
+    "video_file": {
+      "description": "Local file name only. The video itself never leaves the analyst's machine.",
+      "type": ["string", "null"]
+    },
+    "rounds": {
+      "description": "Round boundaries in the video. A fight that ends early has fewer rounds than scheduled.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/round" }
+    },
+    "result": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "winner": { "enum": ["red", "blue", "draw", "no_contest", null] },
+        "method": { "type": ["string", "null"] },
+        "round": { "type": ["integer", "null"], "minimum": 1 }
+      }
+    }
+  },
+  "$defs": {
+    "round": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["number", "start_ms", "end_ms"],
+      "properties": {
+        "number": { "type": "integer", "minimum": 1 },
+        "start_ms": { "description": "Round start in video time (ms).", "type": "integer", "minimum": 0 },
+        "end_ms": { "description": "Round end in video time (ms).", "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

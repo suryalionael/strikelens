@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/suryalionael/strikelens/shared/schema/tag.schema.json",
+  "title": "Tag",
+  "description": "One strike attempt. Human tags and CV suggestions share this shape. A CV suggestion is a tag with source \"cv\", a confidence, and a status.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "fight_id",
+    "round",
+    "timestamp_ms",
+    "fighter",
+    "weapon",
+    "outcome",
+    "target",
+    "source",
+    "confidence",
+    "status",
+    "created_by",
+    "created_at"
+  ],
+  "properties": {
+    "id": {
+      "description": "Unique tag id (UUID).",
+      "type": "string",
+      "format": "uuid"
+    },
+    "fight_id": {
+      "description": "Id of the fight this tag belongs to.",
+      "type": "string",
+      "format": "uuid"
+    },
+    "round": {
+      "description": "Round number, starting at 1.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "timestamp_ms": {
+      "description": "Time of the strike in the video, in milliseconds from the start of the file.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "fighter": {
+      "description": "Corner of the fighter who threw the strike.",
+      "enum": ["red", "blue"]
+    },
+    "weapon": {
+      "description": "Strike type. Null only while a CV suggestion has no weapon guess.",
+      "enum": ["jab", "cross", "hook", "uppercut", "kick", "knee", "elbow", "teep", null]
+    },
+    "outcome": {
+      "description": "Result of the strike. Null until an analyst sets it. Counting rules are open questions (see docs/stat-definitions.md).",
+      "enum": ["landed", "missed", "blocked", null]
+    },
+    "target": {
+      "description": "Where the strike was aimed or landed. Null until an analyst sets it.",
+      "enum": ["head", "body", "legs", null]
+    },
+    "source": {
+      "description": "Who created the tag: an analyst or the CV model.",
+      "enum": ["human", "cv"]
+    },
+    "confidence": {
+      "description": "Model confidence from 0 to 1. Required (non-null) for CV tags, null for human tags.",
+      "type": ["number", "null"],
+      "minimum": 0,
+      "maximum": 1
+    },
+    "status": {
+      "description": "Review state. Human tags are created as confirmed. CV suggestions start as pending.",
+      "enum": ["pending", "confirmed", "rejected"]
+    },
+    "created_by": {
+      "description": "Analyst username, or the model name and version for CV tags (e.g. \"strike-tcn@0.1.0\").",
+      "type": "string",
+      "minLength": 1
+    },
+    "created_at": {
+      "description": "When the tag was created (ISO 8601, UTC).",
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "source": { "const": "cv" } } },
+      "then": { "properties": { "confidence": { "type": "number" } } }
+    },
+    {
+      "if": { "properties": { "source": { "const": "human" } } },
+      "then": { "properties": { "confidence": { "type": "null" } } }
+    },
+    {
+      "if": { "properties": { "status": { "const": "confirmed" } } },
+      "then": {
+        "properties": {
+          "weapon": { "type": "string" },
+          "outcome": { "type": "string" },
+          "target": { "type": "string" }
+        }
+      }
+    }
+  ]
+}

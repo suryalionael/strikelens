@@ -1,0 +1,34 @@
+name: Research
+description: An open question to investigate before committing to a build.
+title: "research: "
+labels: ["type:research"]
+body:
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: What decision does this research inform?
+    validations:
+      required: true
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: The specific question to answer.
+    validations:
+      required: true
+  - type: textarea
+    id: approach
+    attributes:
+      label: Approach
+      description: Papers, models, or experiments to try.
+  - type: textarea
+    id: done
+    attributes:
+      label: Done when
+      description: What output closes this issue (a notebook, an ADR, a short write-up)?
+      value: |
+        - [ ] Findings written up in docs/ or an ADR
+        - [ ] Follow-up issues created, or a decision not to build
+    validations:
+      required: true

@@ -1,0 +1,52 @@
+# --- Data and models: never commit (see docs/data-policy.md) ---
+data/**
+!data/README.md
+!data/*/
+!data/*/.gitkeep
+models/**
+!models/README.md
+
+# Video, frames and weights anywhere in the tree
+*.mp4
+*.mov
+*.mkv
+*.avi
+*.webm
+*.pt
+*.pth
+*.onnx
+*.ckpt
+*.safetensors
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Node
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+npm-debug.log*
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+build/
+.ipynb_checkpoints/
+
+# Local databases
+*.db
+*.sqlite
+*.sqlite3
+
+# OS and editors
+.DS_Store
+.idea/
+.vscode/
