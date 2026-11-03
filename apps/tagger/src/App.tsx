@@ -1,11 +1,14 @@
+import { PlayerProvider } from './player/PlayerProvider'
+import { VideoPlayer } from './player/VideoPlayer'
+
 function App() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-neutral-950 p-8 text-neutral-100">
-      <h1 className="text-4xl font-bold tracking-tight">StrikeLens</h1>
-      <p className="max-w-md text-center text-neutral-400">
-        Human-in-the-loop fight analytics. The tagging app is under construction.
-      </p>
-    </main>
+    <PlayerProvider>
+      <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 p-6">
+        <h1 className="text-2xl font-bold tracking-tight">StrikeLens</h1>
+        <VideoPlayer />
+      </main>
+    </PlayerProvider>
   )
 }
 
