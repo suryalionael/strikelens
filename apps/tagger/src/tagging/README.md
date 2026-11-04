@@ -12,3 +12,9 @@ Hotkey tagging. See issue #8 and the rules in
   and the latest tags. Every option is also a button that sends the same action
   as its key (`actionFor`), so clicking and typing behave the same. No tagging
   logic lives here.
+- `timelineLayout.ts`: pure. The visible time range (the marked rounds, or the
+  whole video before any are marked), positions, round bands, and markers. Outcome
+  is shown by shape: filled = landed, ring = missed, square = blocked.
+- `Timeline.tsx`: red and blue lanes with round bands and a playhead. Click a
+  marker or the track to seek. Markers are memoised so the playhead can move every
+  frame without redrawing them.
