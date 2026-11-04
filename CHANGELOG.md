@@ -42,6 +42,13 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   fighter, weapon, outcome, target, or time (a new time moves it to the right
   round), or delete it after confirming. `Ctrl+Z` / `Cmd+Z` undoes the last new
   tag, edit, or delete, up to 50 steps, through the API (#11).
+- Tagger export: four 1080x1350 PNG stat cards for an Instagram carousel, each
+  with the fighters, an editable credit line, and a provisional-definitions note;
+  a CSV of confirmed tags in tag schema columns; and a long-format stats CSV (#15).
+
+### Fixed
+
+- A fast second `Ctrl+Z` / `Cmd+Z` could undo the same step twice (#47).
 
 ## [0.0.1] - 2026-11-03
 
