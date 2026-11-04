@@ -32,6 +32,9 @@ Create requests may leave out `id` (the server makes a UUID) and, for tags,
 rules in `shared/schema/tag.schema.json`, also after a PATCH. A PATCH cannot change
 `source`, `confidence`, or `created_by`.
 
+Fights must name two different, existing fighters. Rounds must be numbered 1, 2,
+3 in order, end after they start, not overlap, and not outnumber `scheduled_rounds`.
+
 Tables are created on startup. There are no migrations yet; while the schema
 changes, delete the local database file to start fresh.
 

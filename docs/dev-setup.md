@@ -31,6 +31,10 @@ npm install
 npm run dev            # http://localhost:5173
 ```
 
+The tagger saves fights through the API, so start the API too (next section). It
+expects the API at http://localhost:8000. To use another address, set
+`VITE_API_URL`, for example `VITE_API_URL=http://localhost:8001 npm run dev`.
+
 Checks:
 
 ```bash

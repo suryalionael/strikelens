@@ -1,5 +1,6 @@
 from typing import Any
 
+import pytest
 from fastapi.testclient import TestClient
 
 
@@ -133,3 +134,33 @@ def test_delete_fight(client: TestClient) -> None:
     fight = make_fight(client)
     assert client.delete(f"/fights/{fight['id']}").status_code == 204
     assert client.get(f"/fights/{fight['id']}").status_code == 404
+
+
+def _rounds(*pairs: tuple[int, int]) -> list[dict[str, int]]:
+    return [{"number": i, "start_ms": a, "end_ms": b} for i, (a, b) in enumerate(pairs, start=1)]
+
+
+def test_fight_accepts_back_to_back_rounds_and_early_stoppage(client: TestClient) -> None:
+    fight = make_fight(client, rounds=_rounds((0, 100), (100, 150)))
+    assert len(fight["rounds"]) == 2
+
+
+@pytest.mark.parametrize(
+    ("rounds", "message"),
+    [
+        (_rounds((100, 50)), "round 1 ends before it starts"),
+        (_rounds((100, 100)), "round 1 ends before it starts"),
+        (_rounds((0, 100), (90, 200)), "round 2 starts before round 1 ends"),
+        (_rounds((0, 1), (2, 3), (4, 5), (6, 7)), "more rounds than scheduled (3)"),
+        ([{"number": 2, "start_ms": 0, "end_ms": 1}], "numbered 1, 2, 3"),
+    ],
+    ids=["end-before-start", "zero-length", "overlap", "too-many", "bad-numbering"],
+)
+def test_fight_rejects_invalid_rounds(
+    client: TestClient, rounds: list[dict[str, int]], message: str
+) -> None:
+    fight = make_fight(client)
+    body = {k: v for k, v in fight.items() if k != "id"} | {"rounds": rounds}
+    response = client.put(f"/fights/{fight['id']}", json=body)
+    assert response.status_code == 422
+    assert message in response.text
