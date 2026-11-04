@@ -19,6 +19,10 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   saved one. Mark round start and end at the player time, edit times by typing,
   and save valid rounds through the API. The API rejects rounds that end before
   they start, overlap, or outnumber the scheduled rounds (#7).
+- Tagger hotkey tagging: `Q`/`W` pick the fighter, then weapon, outcome, and
+  target keys save a confirmed human tag at the time of the first key, in the
+  round found from the round marks. Keys work in any order and `Esc` clears the
+  draft. Fighter keys are recorded in ADR 0005 (#8).
 
 ## [0.0.1] - 2026-11-03
 
