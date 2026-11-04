@@ -9,4 +9,6 @@ Hotkey tagging. See issue #8 and the rules in
   `complete`, timed at its first key.
 - `tags.ts`: pure. Finds the round for a time and builds the API tag.
 - `TagPanel.tsx`: listens for keys, saves tags through the API, shows the draft
-  and the latest tags. No tagging logic lives here.
+  and the latest tags. Every option is also a button that sends the same action
+  as its key (`actionFor`), so clicking and typing behave the same. No tagging
+  logic lives here.
