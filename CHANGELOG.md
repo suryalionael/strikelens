@@ -15,6 +15,10 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - API CRUD for fighters, fights, and tags on SQLite. Tags are validated with the
   shared schema rules, can be filtered by status and source, and CV suggestions
   can be created in bulk. Database path and CORS origins are configurable (#12).
+- Tagger fight setup: create a fight with new or existing fighters, or open a
+  saved one. Mark round start and end at the player time, edit times by typing,
+  and save valid rounds through the API. The API rejects rounds that end before
+  they start, overlap, or outnumber the scheduled rounds (#7).
 
 ## [0.0.1] - 2026-11-03
 
