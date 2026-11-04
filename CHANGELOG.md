@@ -35,6 +35,9 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   attempts per round, weapon mix, and target distribution, each with a table
   view. Undefined values show as a dash, partial rounds and uncounted tags are
   flagged, provisional rules are listed, and stats refresh after each tag (#14).
+- Tagger timeline: red and blue lanes over the marked rounds, with round bands, a
+  playhead, and outcome shown by marker shape. Clicking a marker or the track
+  seeks the video. Stays smooth with hundreds of tags (#10).
 
 ## [0.0.1] - 2026-11-03
 
