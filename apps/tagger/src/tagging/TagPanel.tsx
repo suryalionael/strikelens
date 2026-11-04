@@ -7,6 +7,7 @@ import { formatTime } from '../player/time'
 import { applyKey, INITIAL_TAGGING, type TaggingState } from './engine'
 import { actionFor, DEFAULT_HOTKEYS, hotkeyAction, keyFor, type HotkeyAction } from './hotkeys'
 import { buildTag } from './tags'
+import { Timeline } from './Timeline'
 
 // There are no user accounts yet. Every human tag is attributed to this name.
 export const ANALYST_NAME = 'analyst'
@@ -148,6 +149,8 @@ export function TagPanel({ fight, rounds, onTagSaved }: Props) {
       {fightId && !src && (
         <p className="text-sm text-neutral-400">Open the fight video to start tagging.</p>
       )}
+
+      {ready && <Timeline tags={tags} rounds={rounds} />}
 
       {ready && (
         <>
