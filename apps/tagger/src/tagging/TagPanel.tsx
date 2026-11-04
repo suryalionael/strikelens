@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { api } from '../api/client'
 import type { Corner, Fight, Tag } from '../api/types'
 import type { RoundDraft } from '../fight/rounds'
@@ -78,7 +78,13 @@ export function TagPanel({ fight, rounds, onTagsChanged }: Props) {
   const [tags, setTags] = useState<Tag[]>([])
   const [message, setMessage] = useState<Message | null>(null)
   const [confirmed, setConfirmed] = useState<Tag | null>(null)
-  const [history, setHistory] = useState<TagAction[]>([])
+  // The undo stack is not drawn, so it lives in a ref and is read and written at the
+  // moment of each change. A Cmd+Z pressed right after the last one then always
+  // sees the current stack, never one a render behind.
+  const historyRef = useRef<TagAction[]>([])
+  const remember = (action: TagAction) => {
+    historyRef.current = record(historyRef.current, action)
+  }
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   // Blocks a second edit or undo until the first reaches the server.
@@ -128,7 +134,7 @@ export function TagPanel({ fight, rounds, onTagsChanged }: Props) {
       .createTag(fightId, built.tag)
       .then((saved) => {
         setTags((list) => upsert(list, saved))
-        setHistory((h) => record(h, { kind: 'create', tag: saved }))
+        remember({ kind: 'create', tag: saved })
         setMessage(null)
         setConfirmed(saved)
         onTagsChanged?.()
@@ -178,7 +184,7 @@ export function TagPanel({ fight, rounds, onTagsChanged }: Props) {
       const saved = await api.updateTag(fightId, tag.id, plan.patch)
       return () => {
         setTags((list) => upsert(list, saved))
-        setHistory((h) => record(h, { kind: 'edit', before: tag, after: saved }))
+        remember({ kind: 'edit', before: tag, after: saved })
         setMessage({ kind: 'info', text: `Changed to ${describeAt(saved)}.` })
       }
     })
@@ -190,7 +196,7 @@ export function TagPanel({ fight, rounds, onTagsChanged }: Props) {
       await api.deleteTag(fightId, tag.id)
       return () => {
         setTags((list) => without(list, tag.id))
-        setHistory((h) => record(h, { kind: 'delete', tag }))
+        remember({ kind: 'delete', tag })
         setSelectedId(null)
         setMessage({ kind: 'info', text: `Deleted ${describeAt(tag)}. Ctrl+Z / Cmd+Z undoes.` })
       }
@@ -204,7 +210,7 @@ export function TagPanel({ fight, rounds, onTagsChanged }: Props) {
       setMessage({ kind: 'info', text: 'Still saving the last change. Try again in a moment.' })
       return
     }
-    const last = history[history.length - 1]
+    const last = historyRef.current[historyRef.current.length - 1]
     if (!last) {
       setMessage({ kind: 'info', text: 'Nothing to undo.' })
       return
@@ -235,15 +241,17 @@ export function TagPanel({ fight, rounds, onTagsChanged }: Props) {
       return () => {
         show()
         // Drop the step only once the server agreed, so a failed undo can be retried.
-        setHistory((h) => h.slice(0, -1))
+        historyRef.current = historyRef.current.slice(0, -1)
       }
     })
   }
 
   // The key listener is added once; it always calls the newest `handle` and `undo`.
+  // A layout effect refreshes them before React yields, so a key pressed right after
+  // the screen changes never reaches a handler from the render before.
   const handleRef = useRef(handle)
   const undoRef = useRef(undo)
-  useEffect(() => {
+  useLayoutEffect(() => {
     handleRef.current = handle
     undoRef.current = undo
   })
