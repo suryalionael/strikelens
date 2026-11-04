@@ -35,6 +35,16 @@ confirmed CV suggestion counts the same as a human tag.
 Stats are always calculated **per fighter**. Totals across both fighters are only
 shown where stated.
 
+A confirmed tag also has to sit inside its round: its `round` must be a marked
+round, and its `timestamp_ms` must fall between that round's start and end marks
+(inclusive). Confirmed tags that fail this, for example after the bell or after a
+round mark was moved, are not counted. `GET /fights/{id}/stats` reports how many
+there are as `uncounted_tags`, so the tagger can warn about them.
+
+All of this is `fight_stats(tags, rounds, scheduled_rounds)` in `core.py`, served
+by `GET /fights/{id}/stats`. The response also lists the provisional rules below,
+so the stat cards can flag them.
+
 ## Time
 
 ### Round time
@@ -65,6 +75,8 @@ Edge cases:
 - **Round with end before start or overlapping rounds:** invalid input; the API
   rejects it.
 
+Implemented: `round_time_s(round)` and `fight_time_s(rounds)` in `core.py`.
+
 ## Attempts
 
 ```
@@ -74,7 +86,7 @@ attempts(fighter, round) = count(tags where fighter = f and round = r)
 
 An attempt is one tag. Landed, missed, and blocked strikes are all attempts.
 
-Implemented: `attempts_by_round(tags)` in `core.py`.
+Implemented: `split(tags, time_s)` and `attempts_by_round(tags)` in `core.py`.
 
 Not settled: **what counts as one attempt inside a combination.** Provisional rule:
 every distinct strike in a combination is its own attempt (a jab-cross-hook is
@@ -129,6 +141,11 @@ formulas as above with the round filter applied.
   strikes per minute uses the shortened round time, so it stays comparable. Raw
   attempt counts for that round are lower simply because the round was shorter;
   the stat card should mark the round as partial.
+- **How a round is detected as partial** (provisional): when fewer rounds are
+  marked than scheduled, the last marked round is partial. The fight record has no
+  stoppage time yet, so this is the only signal. Known limit: while the analyst is
+  still marking rounds, the latest round is flagged too. Implemented:
+  `partial_rounds(rounds, scheduled_rounds)`.
 - **Tags outside every round** (for example, after the bell): not counted. The
   tagger warns the analyst.
 
@@ -143,6 +160,8 @@ weapon_share(f, w) = count(tags where fighter = f and weapon = w) / attempts(f)
   Groups are in [tag-schema.md](tag-schema.md#weapons).
 - Zero attempts: undefined for every weapon.
 
+Implemented: `weapon_mix(tags)` and `weapon_group_mix(tags)` in `core.py`.
+
 ## Target distribution
 
 ```
@@ -153,6 +172,8 @@ target_share(f, t) = count(tags where fighter = f and outcome = "landed" and tar
   for missed strikes the target is a guess at intent. Also keep the attempts-based
   version available. Open question for Freefly which one they publish.
 - Zero landed: undefined.
+
+Implemented: `target_distribution(tags, "landed" | "attempts")` in `core.py`.
 
 ## Defensive responses
 
@@ -196,9 +217,9 @@ Do not resolve these in code without an answer.
 2. **What counts as one attempt in a combination?** Is a jab-cross-hook three
    attempts or one?
 3. **Which stats take you longest to count today?** This decides what we automate first.
-4. **Can you share one fight you have already counted, with your numbers?** This is
-   Gate 1 (issue #16) uses their published numbers instead, so this is for
-   checking stats they do not publish.
+4. **Can you share one fight you have already counted, with your numbers?** Gate 1
+   (issue #16) uses their published numbers instead, so this is for checking stats
+   they do not publish.
 5. **Do you want the tool private to your team or public?**
 
 Further questions raised while writing these definitions:

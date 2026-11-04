@@ -9,7 +9,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.db import Base, cors_origins, database_url, make_engine
 from app.models import tables  # noqa: F401  (registers the tables on Base)
-from app.routes import fighters, fights, tags
+from app.routes import fighters, fights, stats, tags
 
 
 def create_app(db_url: str | None = None) -> FastAPI:
@@ -33,6 +33,7 @@ def create_app(db_url: str | None = None) -> FastAPI:
     app.include_router(fighters.router)
     app.include_router(fights.router)
     app.include_router(tags.router)
+    app.include_router(stats.router)
 
     @app.get("/health")
     def health() -> dict[str, str]:
