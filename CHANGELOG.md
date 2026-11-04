@@ -31,6 +31,10 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   per weapon and group, and target distribution. Only confirmed tags inside their
   round count, undefined values are null, partial rounds are flagged, and the
   response lists the provisional rules in use (#13).
+- Tagger stat cards: a headline card per fighter and red/blue bar charts for
+  attempts per round, weapon mix, and target distribution, each with a table
+  view. Undefined values show as a dash, partial rounds and uncounted tags are
+  flagged, provisional rules are listed, and stats refresh after each tag (#14).
 
 ## [0.0.1] - 2026-11-03
 
