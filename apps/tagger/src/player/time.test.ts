@@ -1,4 +1,4 @@
-import { formatTime, frameIndex, stepFrameTime } from './time'
+import { formatTime, frameIndex, parseTime, stepFrameTime } from './time'
 
 describe('formatTime', () => {
   it.each([
@@ -72,5 +72,27 @@ describe('stepFrameTime', () => {
   it('works with fractional frame rates', () => {
     const t = stepFrameTime(0, 29.97, 1, duration)
     expect(frameIndex(t, 29.97)).toBe(1)
+  })
+})
+
+describe('parseTime', () => {
+  it.each([
+    ['00:00.000', 0],
+    ['01:01.234', 61234],
+    ['1:05', 65000],
+    ['62:05.001', 3725001],
+    ['90', 90000],
+    ['3.5', 3500],
+    [' 02:00.5 ', 120500],
+  ])('parses %s as %i ms', (text, ms) => {
+    expect(parseTime(text)).toBe(ms)
+  })
+
+  it.each(['', 'abc', '1:60', '-1', '1:2:3', '00:00.1234'])('rejects %j', (text) => {
+    expect(parseTime(text)).toBeNull()
+  })
+
+  it('round-trips with formatTime', () => {
+    expect(parseTime(formatTime(61.234))).toBe(61234)
   })
 })

@@ -38,3 +38,16 @@ export function stepFrameTime(
   const target = Math.min(lastFrame, Math.max(0, frameIndex(seconds, fps) + direction))
   return (target + 0.5) / fps
 }
+
+/**
+ * Parse mm:ss.mmm (or m:ss, or plain seconds) into milliseconds.
+ * Returns null for anything else, so callers can reject bad input.
+ */
+export function parseTime(text: string): number | null {
+  const match = /^\s*(?:(\d+):)?(\d+)(?:\.(\d{1,3}))?\s*$/.exec(text)
+  if (!match) return null
+  const [, minutes, seconds = '0', fraction = ''] = match
+  if (minutes !== undefined && Number(seconds) >= 60) return null
+  const ms = Number(fraction.padEnd(3, '0'))
+  return (Number(minutes ?? 0) * 60 + Number(seconds)) * 1000 + ms
+}

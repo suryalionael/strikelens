@@ -104,6 +104,22 @@ class FightFields(StrictModel):
             raise ValueError("red and blue fighters must be different")
         return self
 
+    @model_validator(mode="after")
+    def _valid_rounds(self) -> Self:
+        """Rules the JSON Schema cannot express. See docs/stat-definitions.md (Time)."""
+        if len(self.rounds) > self.scheduled_rounds:
+            raise ValueError(f"more rounds than scheduled ({self.scheduled_rounds})")
+        previous: Round | None = None
+        for expected, r in enumerate(self.rounds, start=1):
+            if r.number != expected:
+                raise ValueError("rounds must be numbered 1, 2, 3, ... in order")
+            if r.end_ms <= r.start_ms:
+                raise ValueError(f"round {r.number} ends before it starts")
+            if previous is not None and r.start_ms < previous.end_ms:
+                raise ValueError(f"round {r.number} starts before round {previous.number} ends")
+            previous = r
+        return self
+
 
 class FightCreate(FightFields):
     id: uuid.UUID | None = None

@@ -32,7 +32,8 @@ Owner: Lionael Surya (`suryalionael`). Works on this 8-10 hours a week.
 ## Folder map
 
 ```
-apps/tagger/src/{player,tagging,stats,export}/   UI by feature
+apps/tagger/src/{player,fight,tagging,stats,export}/   UI by feature
+apps/tagger/src/api/    typed API client and types mirroring the schemas
 apps/api/app/routes/    HTTP endpoints
 apps/api/app/models/    SQLAlchemy + Pydantic models
 apps/api/app/stats/     pure stat functions (core.py)
