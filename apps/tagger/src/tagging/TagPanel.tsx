@@ -4,8 +4,12 @@ import type { Corner, Fight, Tag } from '../api/types'
 import type { RoundDraft } from '../fight/rounds'
 import { usePlayer } from '../player/PlayerContext'
 import { formatTime } from '../player/time'
+import { isFormControl } from '../player/keys'
+import { planEdit, revertPatch, type TagEdit } from './edits'
 import { applyKey, INITIAL_TAGGING, type TaggingState } from './engine'
+import { record, undoStep, upsert, without, type TagAction } from './history'
 import { actionFor, DEFAULT_HOTKEYS, hotkeyAction, keyFor, type HotkeyAction } from './hotkeys'
+import { TagEditor } from './TagEditor'
 import { buildTag } from './tags'
 import { Timeline } from './Timeline'
 
@@ -21,8 +25,8 @@ type Message = { kind: 'info' | 'error'; text: string }
 interface Props {
   fight: Fight | null
   rounds: RoundDraft[]
-  /** Called after a tag is saved, so other panels can refresh. */
-  onTagSaved?: (tag: Tag) => void
+  /** Called after any tag is created, changed, deleted, or undone, so stats refresh. */
+  onTagsChanged?: () => void
 }
 
 const FIELDS = {
@@ -48,8 +52,25 @@ function describe(tag: Pick<Tag, 'fighter' | 'weapon' | 'outcome' | 'target'>): 
   return [CORNER_LABEL[tag.fighter], tag.weapon, tag.outcome, tag.target].join(' ')
 }
 
+function describeAt(tag: Tag): string {
+  return `${describe(tag)} at ${formatTime(tag.timestamp_ms / 1000)}`
+}
+
+const reason = (error: unknown) => (error instanceof Error ? error.message : String(error))
+
+function isUndoKey(event: KeyboardEvent): boolean {
+  return (
+    (event.ctrlKey || event.metaKey) &&
+    !event.shiftKey &&
+    !event.altKey &&
+    event.key.toLowerCase() === 'z' &&
+    // In a text field, Ctrl+Z belongs to the field.
+    !isFormControl(event.target)
+  )
+}
+
 /** Mount with `key={fight id}` so a new fight starts with a clean draft and tag list. */
-export function TagPanel({ fight, rounds, onTagSaved }: Props) {
+export function TagPanel({ fight, rounds, onTagsChanged }: Props) {
   const { src, videoRef } = usePlayer()
   const [tagging, setTagging] = useState<TaggingState>(INITIAL_TAGGING)
   // Handlers read the latest state from here, so two quick keys never see a stale render.
@@ -57,6 +78,11 @@ export function TagPanel({ fight, rounds, onTagSaved }: Props) {
   const [tags, setTags] = useState<Tag[]>([])
   const [message, setMessage] = useState<Message | null>(null)
   const [confirmed, setConfirmed] = useState<Tag | null>(null)
+  const [history, setHistory] = useState<TagAction[]>([])
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  // Blocks a second edit or undo until the first reaches the server.
+  const busyRef = useRef(false)
   const fightId = fight?.id ?? null
   const ready = fightId !== null && src !== null
 
@@ -101,26 +127,109 @@ export function TagPanel({ fight, rounds, onTagSaved }: Props) {
     api
       .createTag(fightId, built.tag)
       .then((saved) => {
-        setTags((list) => [...list, saved])
+        setTags((list) => upsert(list, saved))
+        setHistory((h) => record(h, { kind: 'create', tag: saved }))
         setMessage(null)
         setConfirmed(saved)
-        onTagSaved?.(saved)
+        onTagsChanged?.()
       })
       .catch((error: unknown) => {
-        const reason = error instanceof Error ? error.message : String(error)
-        setMessage({ kind: 'error', text: `Not saved (${label}): ${reason}` })
+        setMessage({ kind: 'error', text: `Not saved (${label}): ${reason(error)}` })
       })
   }
 
-  // The key listener is added once; it always calls the newest `handle`.
+  /** Run one server change at a time, then refresh the stats. */
+  const run = (work: () => Promise<void>) => {
+    if (busyRef.current) {
+      setMessage({ kind: 'info', text: 'Still saving the last change. Try again in a moment.' })
+      return
+    }
+    busyRef.current = true
+    setBusy(true)
+    work()
+      .then(() => onTagsChanged?.())
+      .catch((error: unknown) => setMessage({ kind: 'error', text: reason(error) }))
+      .finally(() => {
+        busyRef.current = false
+        setBusy(false)
+      })
+  }
+
+  const editTag = (tag: Tag, edit: TagEdit) => {
+    if (fightId === null) return
+    const plan = planEdit(tag, edit, rounds)
+    if (!plan.ok) {
+      setMessage({ kind: 'error', text: plan.error })
+      return
+    }
+    run(async () => {
+      const saved = await api.updateTag(fightId, tag.id, plan.patch)
+      setTags((list) => upsert(list, saved))
+      setHistory((h) => record(h, { kind: 'edit', before: tag, after: saved }))
+      setMessage({ kind: 'info', text: `Changed to ${describeAt(saved)}.` })
+    })
+  }
+
+  const deleteTag = (tag: Tag) => {
+    if (fightId === null) return
+    run(async () => {
+      await api.deleteTag(fightId, tag.id)
+      setTags((list) => without(list, tag.id))
+      setHistory((h) => record(h, { kind: 'delete', tag }))
+      setSelectedId(null)
+      setMessage({ kind: 'info', text: `Deleted ${describeAt(tag)}. Ctrl+Z / Cmd+Z undoes.` })
+    })
+  }
+
+  const undo = () => {
+    if (fightId === null) return
+    if (busyRef.current) {
+      // The change in flight is not in the history yet, so wait for it.
+      setMessage({ kind: 'info', text: 'Still saving the last change. Try again in a moment.' })
+      return
+    }
+    const last = history[history.length - 1]
+    if (!last) {
+      setMessage({ kind: 'info', text: 'Nothing to undo.' })
+      return
+    }
+    const step = undoStep(last)
+    run(async () => {
+      if (step.op === 'delete') {
+        await api.deleteTag(fightId, step.tag.id)
+        setTags((list) => without(list, step.tag.id))
+        setSelectedId((id) => (id === step.tag.id ? null : id))
+        setMessage({ kind: 'info', text: `Undid: removed ${describeAt(step.tag)}.` })
+      } else if (step.op === 'restore') {
+        const saved = await api.restoreTag(step.tag)
+        setTags((list) => upsert(list, saved))
+        setMessage({ kind: 'info', text: `Undid: put back ${describeAt(saved)}.` })
+      } else {
+        const saved = await api.updateTag(fightId, step.to.id, revertPatch(step.to))
+        setTags((list) => upsert(list, saved))
+        setMessage({ kind: 'info', text: `Undid: back to ${describeAt(saved)}.` })
+      }
+      // Drop the step only once the server agreed, so a failed undo can be retried.
+      setHistory((h) => h.slice(0, -1))
+    })
+  }
+
+  // The key listener is added once; it always calls the newest `handle` and `undo`.
   const handleRef = useRef(handle)
+  const undoRef = useRef(undo)
   useEffect(() => {
     handleRef.current = handle
+    undoRef.current = undo
   })
 
   useEffect(() => {
     if (!ready) return
     const onKeyDown = (event: KeyboardEvent) => {
+      if (isUndoKey(event)) {
+        event.preventDefault()
+        undoRef.current()
+        return
+      }
       const action = hotkeyAction(event, DEFAULT_HOTKEYS)
       if (!action) return
       event.preventDefault()
@@ -131,6 +240,7 @@ export function TagPanel({ fight, rounds, onTagSaved }: Props) {
   }, [ready])
 
   const { fighter, draft } = tagging
+  const selected = tags.find((t) => t.id === selectedId) ?? null
   const recent = [...tags].sort((a, b) => b.timestamp_ms - a.timestamp_ms).slice(0, RECENT_COUNT)
 
   return (
@@ -150,7 +260,20 @@ export function TagPanel({ fight, rounds, onTagSaved }: Props) {
         <p className="text-sm text-neutral-400">Open the fight video to start tagging.</p>
       )}
 
-      {ready && <Timeline tags={tags} rounds={rounds} />}
+      {ready && (
+        <Timeline tags={tags} rounds={rounds} selectedId={selectedId} onSelect={setSelectedId} />
+      )}
+
+      {ready && selected && (
+        <TagEditor
+          key={selected.id}
+          tag={selected}
+          busy={busy}
+          onEdit={(edit) => editTag(selected, edit)}
+          onDelete={() => deleteTag(selected)}
+          onClose={() => setSelectedId(null)}
+        />
+      )}
 
       {ready && (
         <>
@@ -260,15 +383,32 @@ export function TagPanel({ fight, rounds, onTagSaved }: Props) {
               <th className="font-normal">Round</th>
               <th className="font-normal">Fighter</th>
               <th className="font-normal">Strike</th>
+              <th className="font-normal">
+                <span className="sr-only">Edit</span>
+              </th>
             </tr>
           </thead>
           <tbody>
             {recent.map((tag) => (
-              <tr key={tag.id}>
+              <tr
+                key={tag.id}
+                aria-selected={tag.id === selectedId}
+                className="aria-selected:bg-neutral-800"
+              >
                 <td className="font-mono tabular-nums">{formatTime(tag.timestamp_ms / 1000)}</td>
                 <td>{tag.round}</td>
                 <td className={CORNER_TEXT[tag.fighter]}>{CORNER_LABEL[tag.fighter]}</td>
                 <td>{[tag.weapon, tag.outcome, tag.target].join(' · ')}</td>
+                <td className="text-right">
+                  <button
+                    type="button"
+                    className="text-xs text-neutral-400 underline hover:text-neutral-100"
+                    aria-label={`Edit ${describeAt(tag)}`}
+                    onClick={() => setSelectedId(tag.id)}
+                  >
+                    Edit
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>

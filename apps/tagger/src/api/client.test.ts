@@ -44,3 +44,48 @@ describe('api client', () => {
     expect(fightInput(fight)).toEqual({ event: 'E' })
   })
 })
+
+describe('tag edits', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('patches only the changed fields', async () => {
+    const fetchMock = respond(200, { id: 't1' })
+    await api.updateTag('f1', 't1', { weapon: 'jab' })
+    const [url, init] = fetchMock.mock.calls[0] ?? []
+    expect(url).toBe('http://localhost:8000/fights/f1/tags/t1')
+    expect(init?.method).toBe('PATCH')
+    expect(init?.body).toBe('{"weapon":"jab"}')
+  })
+
+  it('deletes a tag and accepts the empty 204 reply', async () => {
+    const fetchMock = respond(204, null)
+    await expect(api.deleteTag('f1', 't1')).resolves.toBeNull()
+    expect(fetchMock.mock.calls[0]?.[1]?.method).toBe('DELETE')
+  })
+
+  it('restores a tag with its id and time, without fight_id in the body', async () => {
+    const fetchMock = respond(201, { id: 't1' })
+    await api.restoreTag({
+      id: 't1',
+      fight_id: 'f1',
+      round: 1,
+      timestamp_ms: 5,
+      fighter: 'red',
+      weapon: 'jab',
+      outcome: 'landed',
+      target: 'head',
+      source: 'human',
+      confidence: null,
+      status: 'confirmed',
+      created_by: 'analyst',
+      created_at: '2026-11-04T10:00:00Z',
+    })
+    const [url, init] = fetchMock.mock.calls[0] ?? []
+    expect(url).toBe('http://localhost:8000/fights/f1/tags')
+    const body: unknown = JSON.parse(String(init?.body))
+    expect(body).toMatchObject({ id: 't1', created_at: '2026-11-04T10:00:00Z' })
+    expect(body).not.toHaveProperty('fight_id')
+  })
+})

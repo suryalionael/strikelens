@@ -1,3 +1,4 @@
+import type { TagPatch } from '../tagging/edits'
 import type { Fight, FightInput, Fighter, FightStats, Tag, TagInput } from './types'
 
 export const API_URL: string = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
@@ -59,6 +60,18 @@ export const api = {
   listTags: (fightId: string) => request<Tag[]>(`/fights/${fightId}/tags`),
   createTag: (fightId: string, tag: TagInput) =>
     request<Tag>(`/fights/${fightId}/tags`, { method: 'POST', body: JSON.stringify(tag) }),
+  updateTag: (fightId: string, tagId: string, patch: TagPatch & Partial<Pick<Tag, 'status'>>) =>
+    request<Tag>(`/fights/${fightId}/tags/${tagId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(patch),
+    }),
+  deleteTag: (fightId: string, tagId: string) =>
+    request<null>(`/fights/${fightId}/tags/${tagId}`, { method: 'DELETE' }),
+  /** Put a deleted tag back with the same id and creation time (used by undo). */
+  restoreTag: (tag: Tag) => {
+    const { fight_id, ...body } = tag
+    return request<Tag>(`/fights/${fight_id}/tags`, { method: 'POST', body: JSON.stringify(body) })
+  },
   getStats: (fightId: string) => request<FightStats>(`/fights/${fightId}/stats`),
 }
 

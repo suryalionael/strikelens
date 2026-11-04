@@ -19,6 +19,9 @@ const LANE = 'relative h-6'
 interface Props {
   tags: readonly Tag[]
   rounds: readonly RoundDraft[]
+  selectedId?: string | null
+  /** Must be stable (for example a state setter), or markers redraw every frame. */
+  onSelect?: (id: string) => void
 }
 
 function shapeStyle(shape: MarkerShape, color: string) {
@@ -26,7 +29,17 @@ function shapeStyle(shape: MarkerShape, color: string) {
   return { background: color }
 }
 
-const MarkerDot = ({ marker, onSeek }: { marker: Marker; onSeek: (seconds: number) => void }) => (
+const MarkerDot = ({
+  marker,
+  selected,
+  onSeek,
+  onSelect,
+}: {
+  marker: Marker
+  selected: boolean
+  onSeek: (seconds: number) => void
+  onSelect?: (id: string) => void
+}) => (
   <button
     type="button"
     // Hundreds of markers would flood the Tab order; the tag list and player keys
@@ -34,13 +47,15 @@ const MarkerDot = ({ marker, onSeek }: { marker: Marker; onSeek: (seconds: numbe
     tabIndex={-1}
     aria-label={marker.label}
     title={marker.label}
+    aria-pressed={selected}
     onClick={(event) => {
       event.stopPropagation()
       onSeek(marker.timestamp_ms / 1000)
+      onSelect?.(marker.id)
     }}
     className={`absolute top-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 hover:scale-150 ${
       marker.shape === 'square' ? 'rounded-[1px]' : 'rounded-full'
-    }`}
+    } ${selected ? 'z-10 scale-150 outline-2 outline-offset-1 outline-neutral-100' : ''}`}
     style={{ left: `${marker.left}%`, ...shapeStyle(marker.shape, CORNER_COLOR[marker.fighter]) }}
   />
 )
@@ -54,13 +69,17 @@ const MarkerLayer = memo(function MarkerLayer({
   corner,
   start_ms,
   end_ms,
+  selectedId,
   onSeek,
+  onSelect,
 }: {
   tags: readonly Tag[]
   corner: Corner
   start_ms: number
   end_ms: number
+  selectedId: string | null
   onSeek: (seconds: number) => void
+  onSelect?: (id: string) => void
 }) {
   const lane = buildMarkers(
     tags.filter((t) => t.fighter === corner),
@@ -69,13 +88,19 @@ const MarkerLayer = memo(function MarkerLayer({
   return (
     <>
       {lane.map((marker) => (
-        <MarkerDot key={marker.id} marker={marker} onSeek={onSeek} />
+        <MarkerDot
+          key={marker.id}
+          marker={marker}
+          selected={marker.id === selectedId}
+          onSeek={onSeek}
+          onSelect={onSelect}
+        />
       ))}
     </>
   )
 })
 
-export function Timeline({ tags, rounds }: Props) {
+export function Timeline({ tags, rounds, selectedId = null, onSelect }: Props) {
   const { currentTime, duration, seek } = usePlayer()
   const now_ms = Math.round(currentTime * 1000)
   const lastTag_ms = tags.reduce((max, t) => Math.max(max, t.timestamp_ms), 0)
@@ -160,7 +185,9 @@ export function Timeline({ tags, rounds }: Props) {
                 corner={corner}
                 start_ms={range.start_ms}
                 end_ms={range.end_ms}
+                selectedId={selectedId}
                 onSeek={seek}
+                onSelect={onSelect}
               />
             </div>
           ))}
