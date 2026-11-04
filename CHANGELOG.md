@@ -38,6 +38,10 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Tagger timeline: red and blue lanes over the marked rounds, with round bands, a
   playhead, and outcome shown by marker shape. Clicking a marker or the track
   seeks the video. Stays smooth with hundreds of tags (#10).
+- Tagger edit and undo: pick a tag from the list or timeline to change its
+  fighter, weapon, outcome, target, or time (a new time moves it to the right
+  round), or delete it after confirming. `Ctrl+Z` / `Cmd+Z` undoes the last new
+  tag, edit, or delete, up to 50 steps, through the API (#11).
 
 ## [0.0.1] - 2026-11-03
 
