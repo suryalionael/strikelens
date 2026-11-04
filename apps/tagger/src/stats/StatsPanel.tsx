@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import type { Corner, Fight, FightStats } from '../api/types'
+import { ExportPanel } from '../export/ExportPanel'
 import { CornerBarChart } from './CornerBarChart'
 import { formatPercent, formatRate, mixRows, perRoundRows, targetRows } from './format'
 import { HeadlineCard } from './HeadlineCard'
@@ -159,6 +160,7 @@ export function StatsPanel({ fight, refreshKey }: Props) {
               ))}
             </ul>
           </aside>
+          {fight && <ExportPanel fight={fight} stats={stats} names={names} />}
         </>
       )}
     </section>
