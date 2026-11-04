@@ -20,12 +20,14 @@ type SaveState = { kind: 'saved' } | { kind: 'saving' } | { kind: 'failed'; mess
 
 interface Props {
   fight: Fight
+  /** Round marks, including an open round. Owned by the app so tagging can read them. */
+  rounds: RoundDraft[]
+  onRoundsChange: (rounds: RoundDraft[]) => void
   onSaved: (fight: Fight) => void
 }
 
-export function RoundMarker({ fight, onSaved }: Props) {
+export function RoundMarker({ fight, rounds, onRoundsChange, onSaved }: Props) {
   const { currentTime, src, seek } = usePlayer()
-  const [rounds, setRounds] = useState<RoundDraft[]>(fight.rounds)
   const [save, setSave] = useState<SaveState>({ kind: 'saved' })
   // Only the newest save may update the status, in case responses arrive out of order.
   const latestSave = useRef(0)
@@ -36,7 +38,7 @@ export function RoundMarker({ fight, onSaved }: Props) {
   const openRound = rounds.find((r) => r.end_ms === null)
 
   const apply = (next: RoundDraft[]) => {
-    setRounds(next)
+    onRoundsChange(next)
     if (roundErrors(next, fight.scheduled_rounds).length > 0) return
     const toSave = completedRounds(next)
     if (JSON.stringify(toSave) === JSON.stringify(fight.rounds)) return

@@ -10,6 +10,7 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: 'StrikeLens' })).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Video player' })).toBeInTheDocument()
     expect(await screen.findByRole('form', { name: 'New fight' })).toBeInTheDocument()
+    expect(screen.getByText('Open or create a fight to start tagging.')).toBeInTheDocument()
     vi.restoreAllMocks()
   })
 })

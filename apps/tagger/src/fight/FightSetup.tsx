@@ -3,15 +3,21 @@ import { api } from '../api/client'
 import type { Fight, Fighter } from '../api/types'
 import { usePlayer } from '../player/PlayerContext'
 import { FightForm } from './FightForm'
+import type { RoundDraft } from './rounds'
 import { RoundMarker } from './RoundMarker'
 import { button, input, label } from './styles'
 
 interface Props {
   fight: Fight | null
-  onFightChange: (fight: Fight | null) => void
+  rounds: RoundDraft[]
+  /** A different fight was opened, created, or closed (null). */
+  onFightOpen: (fight: Fight | null) => void
+  /** The open fight was saved with new rounds. */
+  onFightSaved: (fight: Fight) => void
+  onRoundsChange: (rounds: RoundDraft[]) => void
 }
 
-export function FightSetup({ fight, onFightChange }: Props) {
+export function FightSetup({ fight, rounds, onFightOpen, onFightSaved, onRoundsChange }: Props) {
   const { fileName } = usePlayer()
   const [fighters, setFighters] = useState<Fighter[]>([])
   const [fights, setFights] = useState<Fight[]>([])
@@ -35,10 +41,8 @@ export function FightSetup({ fight, onFightChange }: Props) {
 
   const nameOf = (id: string) => fighters.find((f) => f.id === id)?.name ?? 'Unknown fighter'
 
-  const keep = (saved: Fight) => {
+  const remember = (saved: Fight) =>
     setFights((list) => [saved, ...list.filter((f) => f.id !== saved.id)])
-    onFightChange(saved)
-  }
 
   if (fight) {
     return (
@@ -61,11 +65,20 @@ export function FightSetup({ fight, onFightChange }: Props) {
               </p>
             )}
           </div>
-          <button type="button" className={button} onClick={() => onFightChange(null)}>
+          <button type="button" className={button} onClick={() => onFightOpen(null)}>
             Switch fight
           </button>
         </header>
-        <RoundMarker key={fight.id} fight={fight} onSaved={keep} />
+        <RoundMarker
+          key={fight.id}
+          fight={fight}
+          rounds={rounds}
+          onRoundsChange={onRoundsChange}
+          onSaved={(saved) => {
+            remember(saved)
+            onFightSaved(saved)
+          }}
+        />
       </div>
     )
   }
@@ -86,7 +99,7 @@ export function FightSetup({ fight, onFightChange }: Props) {
             value=""
             onChange={(event) => {
               const chosen = fights.find((f) => f.id === event.currentTarget.value)
-              if (chosen) onFightChange(chosen)
+              if (chosen) onFightOpen(chosen)
             }}
           >
             <option value="">Choose a fight</option>
@@ -103,7 +116,10 @@ export function FightSetup({ fight, onFightChange }: Props) {
         fighters={fighters}
         videoFile={fileName}
         onFighterCreated={(fighter) => setFighters((list) => [...list, fighter])}
-        onCreated={keep}
+        onCreated={(created) => {
+          remember(created)
+          onFightOpen(created)
+        }}
       />
     </div>
   )

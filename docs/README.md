@@ -40,3 +40,4 @@ next number.
 | [0002](decisions/0002-agpl-licence.md) | AGPL-3.0 licence |
 | [0003](decisions/0003-human-in-the-loop.md) | Human in the loop for every counted strike |
 | [0004](decisions/0004-pose-library.md) | MediaPipe for pose in v1, RTMPose as the upgrade path |
+| [0005](decisions/0005-fighter-hotkeys.md) | Fighter hotkeys: `Q` for red, `W` for blue |
