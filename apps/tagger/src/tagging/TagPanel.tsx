@@ -138,21 +138,33 @@ export function TagPanel({ fight, rounds, onTagsChanged }: Props) {
       })
   }
 
-  /** Run one server change at a time, then refresh the stats. */
-  const run = (work: () => Promise<void>) => {
+  /**
+   * Run one server change at a time, then refresh the stats. `work` returns the
+   * state updates to apply. The lock is released in the same step as those updates,
+   * so the next Ctrl+Z after the screen changes is never refused as "still saving".
+   */
+  const run = (work: () => Promise<() => void>) => {
     if (busyRef.current) {
       setMessage({ kind: 'info', text: 'Still saving the last change. Try again in a moment.' })
       return
     }
     busyRef.current = true
     setBusy(true)
-    work()
-      .then(() => onTagsChanged?.())
-      .catch((error: unknown) => setMessage({ kind: 'error', text: reason(error) }))
-      .finally(() => {
-        busyRef.current = false
-        setBusy(false)
-      })
+    const release = () => {
+      busyRef.current = false
+      setBusy(false)
+    }
+    work().then(
+      (apply) => {
+        release()
+        apply()
+        onTagsChanged?.()
+      },
+      (error: unknown) => {
+        release()
+        setMessage({ kind: 'error', text: reason(error) })
+      },
+    )
   }
 
   const editTag = (tag: Tag, edit: TagEdit) => {
@@ -164,9 +176,11 @@ export function TagPanel({ fight, rounds, onTagsChanged }: Props) {
     }
     run(async () => {
       const saved = await api.updateTag(fightId, tag.id, plan.patch)
-      setTags((list) => upsert(list, saved))
-      setHistory((h) => record(h, { kind: 'edit', before: tag, after: saved }))
-      setMessage({ kind: 'info', text: `Changed to ${describeAt(saved)}.` })
+      return () => {
+        setTags((list) => upsert(list, saved))
+        setHistory((h) => record(h, { kind: 'edit', before: tag, after: saved }))
+        setMessage({ kind: 'info', text: `Changed to ${describeAt(saved)}.` })
+      }
     })
   }
 
@@ -174,10 +188,12 @@ export function TagPanel({ fight, rounds, onTagsChanged }: Props) {
     if (fightId === null) return
     run(async () => {
       await api.deleteTag(fightId, tag.id)
-      setTags((list) => without(list, tag.id))
-      setHistory((h) => record(h, { kind: 'delete', tag }))
-      setSelectedId(null)
-      setMessage({ kind: 'info', text: `Deleted ${describeAt(tag)}. Ctrl+Z / Cmd+Z undoes.` })
+      return () => {
+        setTags((list) => without(list, tag.id))
+        setHistory((h) => record(h, { kind: 'delete', tag }))
+        setSelectedId(null)
+        setMessage({ kind: 'info', text: `Deleted ${describeAt(tag)}. Ctrl+Z / Cmd+Z undoes.` })
+      }
     })
   }
 
@@ -195,22 +211,32 @@ export function TagPanel({ fight, rounds, onTagsChanged }: Props) {
     }
     const step = undoStep(last)
     run(async () => {
+      let show: () => void
       if (step.op === 'delete') {
         await api.deleteTag(fightId, step.tag.id)
-        setTags((list) => without(list, step.tag.id))
-        setSelectedId((id) => (id === step.tag.id ? null : id))
-        setMessage({ kind: 'info', text: `Undid: removed ${describeAt(step.tag)}.` })
+        show = () => {
+          setTags((list) => without(list, step.tag.id))
+          setSelectedId((id) => (id === step.tag.id ? null : id))
+          setMessage({ kind: 'info', text: `Undid: removed ${describeAt(step.tag)}.` })
+        }
       } else if (step.op === 'restore') {
         const saved = await api.restoreTag(step.tag)
-        setTags((list) => upsert(list, saved))
-        setMessage({ kind: 'info', text: `Undid: put back ${describeAt(saved)}.` })
+        show = () => {
+          setTags((list) => upsert(list, saved))
+          setMessage({ kind: 'info', text: `Undid: put back ${describeAt(saved)}.` })
+        }
       } else {
         const saved = await api.updateTag(fightId, step.to.id, revertPatch(step.to))
-        setTags((list) => upsert(list, saved))
-        setMessage({ kind: 'info', text: `Undid: back to ${describeAt(saved)}.` })
+        show = () => {
+          setTags((list) => upsert(list, saved))
+          setMessage({ kind: 'info', text: `Undid: back to ${describeAt(saved)}.` })
+        }
       }
-      // Drop the step only once the server agreed, so a failed undo can be retried.
-      setHistory((h) => h.slice(0, -1))
+      return () => {
+        show()
+        // Drop the step only once the server agreed, so a failed undo can be retried.
+        setHistory((h) => h.slice(0, -1))
+      }
     })
   }
 
