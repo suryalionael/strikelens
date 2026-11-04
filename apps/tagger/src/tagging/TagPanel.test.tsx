@@ -84,6 +84,18 @@ describe('TagPanel', () => {
     expect(screen.getByText('1 tags')).toBeInTheDocument()
   })
 
+  it('tells the app when a tag is saved', async () => {
+    const onTagSaved = vi.fn()
+    render(
+      <PlayerContext value={fakePlayer({ src: 'blob:fight', videoRef: { current: video } })}>
+        <TagPanel fight={FIGHT} rounds={ROUNDS} onTagSaved={onTagSaved} />
+      </PlayerContext>,
+    )
+    keys('q', 'k', 'l', '2')
+    await waitFor(() => expect(onTagSaved).toHaveBeenCalledOnce())
+    expect(onTagSaved.mock.calls[0]?.[0]).toMatchObject({ id: 'tag-1', weapon: 'kick' })
+  })
+
   it('keeps the fighter for the next tag', async () => {
     renderPanel()
     keys('w', 'j', 'm', '1')

@@ -20,6 +20,8 @@ type Message = { kind: 'info' | 'error'; text: string }
 interface Props {
   fight: Fight | null
   rounds: RoundDraft[]
+  /** Called after a tag is saved, so other panels can refresh. */
+  onTagSaved?: (tag: Tag) => void
 }
 
 const FIELDS = {
@@ -46,7 +48,7 @@ function describe(tag: Pick<Tag, 'fighter' | 'weapon' | 'outcome' | 'target'>): 
 }
 
 /** Mount with `key={fight id}` so a new fight starts with a clean draft and tag list. */
-export function TagPanel({ fight, rounds }: Props) {
+export function TagPanel({ fight, rounds, onTagSaved }: Props) {
   const { src, videoRef } = usePlayer()
   const [tagging, setTagging] = useState<TaggingState>(INITIAL_TAGGING)
   // Handlers read the latest state from here, so two quick keys never see a stale render.
@@ -101,6 +103,7 @@ export function TagPanel({ fight, rounds }: Props) {
         setTags((list) => [...list, saved])
         setMessage(null)
         setConfirmed(saved)
+        onTagSaved?.(saved)
       })
       .catch((error: unknown) => {
         const reason = error instanceof Error ? error.message : String(error)
