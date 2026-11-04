@@ -12,6 +12,9 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Tagger video player: open a local file (never uploaded), `Space` to play and
   pause, 0.25x-2x speed, `←` / `→` frame stepping at a chosen frame rate, and a
   `mm:ss.mmm` clock. Other components read player state with `usePlayer()` (#6).
+- API CRUD for fighters, fights, and tags on SQLite. Tags are validated with the
+  shared schema rules, can be filtered by status and source, and CV suggestions
+  can be created in bulk. Database path and CORS origins are configurable (#12).
 
 ## [0.0.1] - 2026-11-03
 
