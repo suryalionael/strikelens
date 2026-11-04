@@ -6,6 +6,7 @@ import { PlayerContext } from '../player/PlayerContext'
 import type { Player } from '../player/usePlayerState'
 import { fakePlayer } from '../test/fakePlayer'
 import { FightSetup } from './FightSetup'
+import type { RoundDraft } from './rounds'
 
 const RED: Fighter = { id: 'red-1', name: 'Red Fighter', nickname: null, gym: null, country: null }
 
@@ -31,9 +32,19 @@ afterEach(() => {
 
 function Harness({ player, initial = null }: { player: Player; initial?: Fight | null }) {
   const [fight, setFight] = useState<Fight | null>(initial)
+  const [rounds, setRounds] = useState<RoundDraft[]>(initial?.rounds ?? [])
   return (
     <PlayerContext value={player}>
-      <FightSetup fight={fight} onFightChange={setFight} />
+      <FightSetup
+        fight={fight}
+        rounds={rounds}
+        onFightOpen={(opened) => {
+          setFight(opened)
+          setRounds(opened?.rounds ?? [])
+        }}
+        onFightSaved={setFight}
+        onRoundsChange={setRounds}
+      />
     </PlayerContext>
   )
 }

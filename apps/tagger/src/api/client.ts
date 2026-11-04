@@ -1,4 +1,4 @@
-import type { Fight, FightInput, Fighter } from './types'
+import type { Fight, FightInput, Fighter, Tag, TagInput } from './types'
 
 export const API_URL: string = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
@@ -55,6 +55,9 @@ export const api = {
     request<Fight>('/fights', { method: 'POST', body: JSON.stringify(fight) }),
   replaceFight: (id: string, fight: FightInput) =>
     request<Fight>(`/fights/${id}`, { method: 'PUT', body: JSON.stringify(fight) }),
+  listTags: (fightId: string) => request<Tag[]>(`/fights/${fightId}/tags`),
+  createTag: (fightId: string, tag: TagInput) =>
+    request<Tag>(`/fights/${fightId}/tags`, { method: 'POST', body: JSON.stringify(tag) }),
 }
 
 export function fightInput(fight: Fight): FightInput {

@@ -92,8 +92,8 @@ One key per choice, no modifiers, so the analyst can keep one hand on the keyboa
 | Body | `2` |
 | Legs | `3` |
 | **Fighter** | |
-| Red | `Q` (proposed, see below) |
-| Blue | `W` (proposed, see below) |
+| Red | `Q` |
+| Blue | `W` |
 | **Suggestions** | |
 | Confirm suggestion | `Enter` |
 | Reject suggestion | `X` |
@@ -114,30 +114,20 @@ tags need only three keys: weapon, outcome, target.
 
 Example: `Q` `K` `L` `2` = red, kick, landed, body.
 
-The exact draft behaviour (timeouts, what `Esc` does, whether the order of keys
-is free) is part of issue #8.
+Rules (issue #8):
 
-### Decision to confirm: fighter keys
+- Keys can come in any order. Pressing a key for a field that is already set
+  replaces it, so a wrong weapon is fixed by pressing the right one.
+- The draft's time is the video time at its first key. That includes the fighter
+  key when it starts a draft.
+- `Esc` clears the draft. The fighter stays selected.
+- There is no timeout. A draft waits until it is complete or cleared.
+- The round comes from the round marks. A tag outside every marked round is not
+  saved, and the tagger says why.
+- Keys typed into a text field or a select are ignored, and so are keys with
+  `Ctrl`, `Cmd`, or `Alt`.
 
-The brief suggested `R` for red and `B` for blue. `B` is already Blocked, so that
-does not work.
+### Fighter keys
 
-**Proposal:** `Q` = red, `W` = blue.
-
-- Both sit under the left hand, next to each other, and are not used for anything else.
-- Left hand picks the fighter, right hand picks the weapon and outcome. Number keys
-  sit in between for targets.
-- `R` and `B` stay free, so `B` = Blocked is unambiguous.
-
-Alternatives considered:
-
-- `R` = red, `Shift+B` = blue: inconsistent, and `Shift+B` is easy to mistype as `B`.
-- One toggle key (for example `` ` ``): fewer keys, but the analyst has to look at
-  the screen to know which fighter is active.
-- `Blocked` moved to another key, keep `R`/`B` for fighters: `B` for blue is the most
-  natural, but then Blocked needs a non-obvious key like `O`.
-
-Status: **proposed, not confirmed.** The owner decides before building issue #8.
-Freefly is not contacted until Phase 4, so this does not wait for them. Record the
-final choice as an ADR. Hotkeys should be configurable later, so this is a default, not
-a lock-in.
+`Q` = red, `W` = blue. See [ADR 0005](decisions/0005-fighter-hotkeys.md) for the
+options considered.

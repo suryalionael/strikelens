@@ -1,6 +1,11 @@
 // Mirrors shared/schema/*.json. Field names stay snake_case to match the API.
 
 export type Corner = 'red' | 'blue'
+export type Weapon = 'jab' | 'cross' | 'hook' | 'uppercut' | 'kick' | 'knee' | 'elbow' | 'teep'
+export type Outcome = 'landed' | 'missed' | 'blocked'
+export type Target = 'head' | 'body' | 'legs'
+export type TagSource = 'human' | 'cv'
+export type TagStatus = 'pending' | 'confirmed' | 'rejected'
 
 export interface Fighter {
   id: string
@@ -36,3 +41,22 @@ export interface Fight {
 }
 
 export type FightInput = Omit<Fight, 'id'>
+
+export interface Tag {
+  id: string
+  fight_id: string
+  round: number
+  timestamp_ms: number
+  fighter: Corner
+  weapon: Weapon | null
+  outcome: Outcome | null
+  target: Target | null
+  source: TagSource
+  confidence: number | null
+  status: TagStatus
+  created_by: string
+  created_at: string
+}
+
+/** What the tagger sends. The API fills in id, fight_id, and created_at. */
+export type TagInput = Omit<Tag, 'id' | 'fight_id' | 'created_at'>

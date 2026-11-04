@@ -10,7 +10,7 @@ interface KeyInput {
 
 // Form controls own these keys: Space types a space, arrows move the caret or
 // change a select's value.
-function isFormControl(target: EventTarget | null): boolean {
+export function isFormControl(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false
   if (target.isContentEditable) return true
   return ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
