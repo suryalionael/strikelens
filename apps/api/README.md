@@ -26,6 +26,7 @@ uv run pytest
 | GET, POST | `/fights/{id}/tags` | List tags in video order, or create one. Filter with `?status=` and `?source=` |
 | POST | `/fights/{id}/tags/bulk` | Create many tags at once, all or nothing. For CV suggestions |
 | GET, PATCH, DELETE | `/fights/{id}/tags/{tag_id}` | Read, change (for example confirm a suggestion), or delete a tag |
+| GET | `/fights/{id}/stats` | Every v1 stat for both fighters, plus the provisional rules in use. See [docs/stat-definitions.md](../../docs/stat-definitions.md) |
 
 Create requests may leave out `id` (the server makes a UUID) and, for tags,
 `created_at` (the server uses the current UTC time). Every tag is checked with the
