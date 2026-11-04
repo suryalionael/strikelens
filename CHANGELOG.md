@@ -23,6 +23,9 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   target keys save a confirmed human tag at the time of the first key, in the
   round found from the round marks. Keys work in any order and `Esc` clears the
   draft. Fighter keys are recorded in ADR 0005 (#8).
+- Tagger tag panel: every fighter, weapon, outcome, and target option is a button
+  that does the same as its hotkey, corners are labelled in words as well as
+  colour, and the last saved tag is confirmed for three seconds (#9).
 
 ## [0.0.1] - 2026-11-03
 
