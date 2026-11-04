@@ -1,10 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { api } from '../api/client'
 import type { Fight, Tag, TagInput } from '../api/types'
 import type { RoundDraft } from '../fight/rounds'
 import { PlayerContext } from '../player/PlayerContext'
 import { fakePlayer } from '../test/fakePlayer'
-import { TagPanel } from './TagPanel'
+import { CONFIRM_MS, TagPanel } from './TagPanel'
 
 const FIGHT = { id: 'fight-1' } as Fight
 const ROUNDS: RoundDraft[] = [{ number: 1, start_ms: 1000, end_ms: 181000 }]
@@ -63,7 +63,11 @@ describe('TagPanel', () => {
     keys('q')
     videoTime = 62
     keys('k', 'l', '2')
-    await screen.findByText(/^Saved red kick landed body at 01:01.250, round 1/)
+    await waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'Saved: Red kick landed body at 01:01.250, round 1',
+      ),
+    )
     expect(api.createTag).toHaveBeenCalledWith('fight-1', {
       round: 1,
       timestamp_ms: 61250,
@@ -97,13 +101,10 @@ describe('TagPanel', () => {
   it('shows the draft as keys are pressed and clears it with Esc', () => {
     renderPanel()
     keys('q', 'h')
-    expect(screen.getByText('Tag at 01:01.250 · Esc to clear')).toBeInTheDocument()
-    expect(screen.getByText('hook').closest('[aria-current]')).toHaveAttribute(
-      'aria-current',
-      'true',
-    )
+    expect(screen.getByLabelText('Current tag')).toHaveTextContent('Red · hook · — · —at 01:01.250')
+    expect(screen.getByRole('button', { name: 'hook' })).toHaveAttribute('aria-pressed', 'true')
     keys('Escape')
-    expect(screen.getByText('Press a key to start a tag')).toBeInTheDocument()
+    expect(screen.getByText('Press a key or click to start a tag')).toBeInTheDocument()
     keys('l', '1')
     expect(api.createTag).not.toHaveBeenCalled()
   })
@@ -140,7 +141,7 @@ describe('TagPanel', () => {
     renderPanel()
     keys('q', 'k', 'l', '2')
     expect(
-      await screen.findByText('Not saved (red kick landed body at 01:01.250, round 1): API down'),
+      await screen.findByText('Not saved (Red kick landed body at 01:01.250, round 1): API down'),
     ).toBeInTheDocument()
   })
 
@@ -166,5 +167,81 @@ describe('TagPanel', () => {
     const rows = screen.getAllByRole('row').slice(1)
     expect(rows[0]).toHaveTextContent('00:09.000')
     expect(rows[1]).toHaveTextContent('00:05.000')
+  })
+
+  it('tags by clicking, the same as with keys', async () => {
+    renderPanel()
+    fireEvent.click(screen.getByRole('button', { name: 'Blue corner' }))
+    fireEvent.click(screen.getByRole('button', { name: 'uppercut' }))
+    fireEvent.click(screen.getByRole('button', { name: 'blocked' }))
+    fireEvent.click(screen.getByRole('button', { name: 'head' }))
+    await waitFor(() => expect(api.createTag).toHaveBeenCalledOnce())
+    expect(vi.mocked(api.createTag).mock.calls[0]?.[1]).toMatchObject({
+      fighter: 'blue',
+      weapon: 'uppercut',
+      outcome: 'blocked',
+      target: 'head',
+      timestamp_ms: 61250,
+    })
+  })
+
+  it('mixes clicks and keys in one tag', async () => {
+    renderPanel()
+    keys('q')
+    fireEvent.click(screen.getByRole('button', { name: 'elbow' }))
+    keys('l', '1')
+    await waitFor(() => expect(api.createTag).toHaveBeenCalledOnce())
+    expect(vi.mocked(api.createTag).mock.calls[0]?.[1].weapon).toBe('elbow')
+  })
+
+  it('clears the draft with the Clear button', () => {
+    renderPanel()
+    keys('q', 'k')
+    fireEvent.click(screen.getByRole('button', { name: 'Clear (Esc)' }))
+    expect(screen.getByText('Press a key or click to start a tag')).toBeInTheDocument()
+  })
+
+  it('shows every option with its hotkey', () => {
+    renderPanel()
+    const expected = {
+      'Red corner': 'Q',
+      'Blue corner': 'W',
+      jab: 'J',
+      teep: 'T',
+      missed: 'M',
+      legs: '3',
+    }
+    for (const [name, key] of Object.entries(expected)) {
+      const option = screen.getByRole('button', { name })
+      expect(option).toHaveAttribute('aria-keyshortcuts', key)
+      expect(option).toHaveTextContent(`${key}${name}`)
+    }
+  })
+
+  it('labels corners in words, not only colour', async () => {
+    renderPanel()
+    keys('w', 'j', 'm', '1')
+    await waitFor(() => expect(screen.getByRole('table')).toHaveTextContent('Blue'))
+    expect(screen.getByLabelText('Current tag')).toHaveTextContent('Blue')
+    expect(screen.getByRole('button', { name: 'Blue corner' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+  })
+
+  it('shows the saved tag for a moment, then hides it', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      renderPanel()
+      keys('q', 'k', 'l', '2')
+      await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved: Red kick'))
+      act(() => {
+        vi.advanceTimersByTime(CONFIRM_MS + 10)
+      })
+      expect(screen.getByRole('status')).toBeEmptyDOMElement()
+      expect(screen.getByRole('table')).toHaveTextContent('kick · landed · body')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

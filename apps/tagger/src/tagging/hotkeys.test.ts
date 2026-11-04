@@ -1,4 +1,4 @@
-import { DEFAULT_HOTKEYS, hotkeyAction, keyFor } from './hotkeys'
+import { actionFor, DEFAULT_HOTKEYS, hotkeyAction, keyFor } from './hotkeys'
 
 const press = (key: string, target: EventTarget | null = document.body, mods = {}) =>
   hotkeyAction({ key, ctrlKey: false, metaKey: false, altKey: false, target, ...mods })
@@ -45,5 +45,16 @@ describe('keyFor', () => {
     expect(keyFor('weapon', 'teep')).toBe('T')
     expect(keyFor('target', 'legs')).toBe('3')
     expect(keyFor('fighter', 'blue')).toBe('W')
+  })
+})
+
+describe('actionFor', () => {
+  it('returns the same action the key sends', () => {
+    expect(actionFor('outcome', 'blocked')).toEqual(press('b'))
+    expect(actionFor('fighter', 'red')).toEqual(press('q'))
+  })
+
+  it('returns null for an unbound value', () => {
+    expect(actionFor('weapon', 'backfist')).toBeNull()
   })
 })

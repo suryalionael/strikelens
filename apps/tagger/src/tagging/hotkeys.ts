@@ -49,14 +49,28 @@ export function hotkeyAction(event: KeyInput, hotkeys: Hotkeys = DEFAULT_HOTKEYS
   return hotkeys[event.key.toLowerCase()] ?? null
 }
 
+type ValueField = Exclude<HotkeyAction['field'], 'clear'>
+
+function binding(field: ValueField, value: string, hotkeys: Hotkeys) {
+  return Object.entries(hotkeys).find(
+    ([, action]) => action.field === field && 'value' in action && action.value === value,
+  )
+}
+
 /** The key bound to a field value, for on-screen hints. */
 export function keyFor(
-  field: 'fighter' | 'weapon' | 'outcome' | 'target',
+  field: ValueField,
   value: string,
   hotkeys: Hotkeys = DEFAULT_HOTKEYS,
 ): string | null {
-  const entry = Object.entries(hotkeys).find(
-    ([, action]) => action.field === field && 'value' in action && action.value === value,
-  )
-  return entry ? entry[0].toUpperCase() : null
+  return binding(field, value, hotkeys)?.[0].toUpperCase() ?? null
+}
+
+/** The action a key for this field value would send. Clicks use it, so they match keys. */
+export function actionFor(
+  field: ValueField,
+  value: string,
+  hotkeys: Hotkeys = DEFAULT_HOTKEYS,
+): HotkeyAction | null {
+  return binding(field, value, hotkeys)?.[1] ?? null
 }
