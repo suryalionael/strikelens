@@ -26,6 +26,11 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Tagger tag panel: every fighter, weapon, outcome, and target option is a button
   that does the same as its hotkey, corners are labelled in words as well as
   colour, and the last saved tag is confirmed for three seconds (#9).
+- API stats engine and `GET /fights/{id}/stats`: round and fight time, attempts,
+  landed, accuracy, and strikes per minute per fighter and per round, weapon mix
+  per weapon and group, and target distribution. Only confirmed tags inside their
+  round count, undefined values are null, partial rounds are flagged, and the
+  response lists the provisional rules in use (#13).
 
 ## [0.0.1] - 2026-11-03
 
