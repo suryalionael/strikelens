@@ -210,6 +210,11 @@ describe('FightSetup: marking rounds', () => {
     expect(player.seek).toHaveBeenCalledWith(1.5)
   })
 
+  it('says when no rounds are marked yet', () => {
+    renderSetup(fakePlayer(), savedFight())
+    expect(screen.getByText('No rounds marked yet.')).toBeInTheDocument()
+  })
+
   it('needs a video before rounds can be marked', () => {
     renderSetup(fakePlayer({ src: null, fileName: null }), savedFight())
     expect(screen.getByRole('button', { name: /Start round 1/ })).toBeDisabled()

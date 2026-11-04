@@ -64,7 +64,9 @@ export function RoundMarker({ fight, onSaved }: Props) {
           ? `Not saved: ${save.message}`
           : openRound
             ? `Round ${openRound.number} is open. It is saved when you mark its end.`
-            : 'All rounds saved.'
+            : rounds.length === 0
+              ? 'No rounds marked yet.'
+              : 'All rounds saved.'
 
   return (
     <section aria-label="Rounds" className="flex flex-col gap-3">
