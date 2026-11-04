@@ -11,7 +11,7 @@ function App() {
   const [fight, setFight] = useState<Fight | null>(null)
   // Round marks live here, not in the round marker, so tagging can see an open round.
   const [rounds, setRounds] = useState<RoundDraft[]>([])
-  // Goes up on every saved tag, so the stats panel refetches.
+  // Goes up on every tag change (create, edit, delete, undo), so the stats refetch.
   const [savedTags, setSavedTags] = useState(0)
 
   const openFight = (opened: Fight | null) => {
@@ -30,7 +30,7 @@ function App() {
               key={fight?.id ?? 'none'}
               fight={fight}
               rounds={rounds}
-              onTagSaved={() => setSavedTags((n) => n + 1)}
+              onTagsChanged={() => setSavedTags((n) => n + 1)}
             />
             <StatsPanel key={`stats-${fight?.id ?? 'none'}`} fight={fight} refreshKey={savedTags} />
           </div>

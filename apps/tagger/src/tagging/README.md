@@ -18,3 +18,8 @@ Hotkey tagging. See issue #8 and the rules in
 - `Timeline.tsx`: red and blue lanes with round bands and a playhead. Click a
   marker or the track to seek. Markers are memoised so the playhead can move every
   frame without redrawing them.
+- `edits.ts`: pure. Turns an edit into a PATCH; a new time also moves the tag to
+  its round, and a time outside every round is refused.
+- `history.ts`: pure undo history (50 steps). Undo deletes a new tag, restores a
+  deleted tag with the same id and creation time, or reverts an edit.
+- `TagEditor.tsx`: change or delete the selected tag. Delete asks first.

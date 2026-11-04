@@ -103,7 +103,7 @@ One key per choice, no modifiers, so the analyst can keep one hand on the keyboa
 | Play / pause | `Space` |
 | Frame step back / forward | `←` / `→` |
 | **Editing** | |
-| Undo last tag | `Ctrl+Z` (`Cmd+Z` on macOS) |
+| Undo last change (new tag, edit, or delete) | `Ctrl+Z` (`Cmd+Z` on macOS) |
 
 ### How a tag is entered
 
