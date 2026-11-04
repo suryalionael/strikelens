@@ -235,8 +235,16 @@ describe('TagPanel', () => {
       renderPanel()
       keys('q', 'k', 'l', '2')
       await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved: Red kick'))
-      act(() => {
-        vi.advanceTimersByTime(CONFIRM_MS + 10)
+      // The hide timer starts in an effect after the text renders. Flush effects
+      // first, or the clock moves before the timer exists and it never fires.
+      await act(async () => {})
+      expect(screen.getByRole('status')).toHaveTextContent('Saved: Red kick')
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(CONFIRM_MS - 100)
+      })
+      expect(screen.getByRole('status')).toHaveTextContent('Saved: Red kick')
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(200)
       })
       expect(screen.getByRole('status')).toBeEmptyDOMElement()
       expect(screen.getByRole('table')).toHaveTextContent('kick · landed · body')
