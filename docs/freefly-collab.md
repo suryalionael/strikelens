@@ -52,7 +52,8 @@ The five to ask first:
 Collaboration questions:
 
 - Who owns tags made in StrikeLens on Byon footage? Can any become a public dataset?
-- Can StrikeLens be credited on cards that use it?
+- Can StrikeLens be credited on cards that use it? What wording do you want? The
+  exported cards use "Tagged with StrikeLens" for now, and the analyst can edit it.
 - Are you in contact with Byon Combat, and would they allow footage in demos?
 - Who on your team would test the tagger, and how often do you count fights?
 

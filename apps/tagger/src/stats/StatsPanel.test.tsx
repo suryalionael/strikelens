@@ -6,6 +6,8 @@ import { StatsPanel } from './StatsPanel'
 
 const FIGHT = {
   id: 'fight-1',
+  event: 'Test Event 1',
+  date: '2026-11-01',
   red_fighter_id: 'red-1',
   blue_fighter_id: 'blue-1',
   rounds: [],
