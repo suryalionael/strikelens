@@ -187,8 +187,9 @@ against the fights themselves.
 
 ## Open questions for Freefly
 
-Status of each is tracked in issue #5. Do not resolve these in code without an
-answer.
+Status of each is tracked in issue #5. We ask Freefly at the start of Phase 4,
+once the tool works end to end (see [roadmap.md](roadmap.md#when-we-contact-freefly)).
+Do not resolve these in code without an answer.
 
 1. **How do you define a landed strike?** Does a strike on the guard count? A
    checked leg kick? A kick that lands on the arm covering the body?
@@ -196,7 +197,8 @@ answer.
    attempts or one?
 3. **Which stats take you longest to count today?** This decides what we automate first.
 4. **Can you share one fight you have already counted, with your numbers?** This is
-   the Gate 1 comparison (issue #16).
+   Gate 1 (issue #16) uses their published numbers instead, so this is for
+   checking stats they do not publish.
 5. **Do you want the tool private to your team or public?**
 
 Further questions raised while writing these definitions:

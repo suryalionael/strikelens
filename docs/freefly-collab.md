@@ -5,6 +5,9 @@ StrikeLens is built for a proposed collaboration with Freefly Metrics
 kickboxing stats on Instagram. Nothing is agreed yet. This page holds the pitch,
 the questions, and notes from every conversation.
 
+**Timing:** first contact is planned for the start of Phase 4 (February 2027), once
+the tool works end to end. See [roadmap.md](roadmap.md#when-we-contact-freefly).
+
 ## Pitch summary
 
 **Count a fight in a fraction of the time, with numbers you can still trust.**
@@ -22,7 +25,7 @@ the questions, and notes from every conversation.
 
 | Date | Channel | Who | Summary | Next step |
 |---|---|---|---|---|
-| (not contacted yet) | Instagram DM | | | Send first DM (issue #4) |
+| (not contacted yet) | Instagram DM | | | Send first DM at the start of Phase 4 (issue #4) |
 
 ## First DM outline (issue #4)
 
@@ -33,7 +36,7 @@ Keep it short. Indonesian or English, whichever Freefly posts in more.
 2. What I am building, in one line, and that it is free and open source.
 3. One ask: a 20-minute call, or answers to two questions (how they define a landed
    strike, and whether they would share one counted fight).
-4. Link to this repo.
+4. Link to this repo and to the deployed tool.
 
 ## Open questions
 

@@ -131,10 +131,10 @@ scripts/         Dev helper scripts
 | Phase | Due | Gate |
 |---|---|---|
 | Phase 0 · Setup | 2026-11-08 | Repo, docs, CI green |
-| Phase 1 · Tagging app MVP | 2026-11-29 | Gate 1: demo to Freefly, one fight tagged and compared with their numbers |
+| Phase 1 · Tagging app MVP | 2026-11-29 | Gate 1: one fight tagged and compared with Freefly's published numbers |
 | Phase 2 · CV baseline | 2026-12-13 | Gate 2: overlay demo video ready to share |
 | Phase 3 · Strike suggestions | 2027-01-31 | Gate 3: assisted tagging works end to end on a full fight |
-| Phase 4 · Validate and ship v1 | 2027-02-21 | Gate 4: v1 handed over to Freefly |
+| Phase 4 · Validate and ship v1 | 2027-02-21 | Gate 4: Freefly contacted, counting rules confirmed, v1 handed over |
 
 Dec 14 to Jan 3 is exam and winter break buffer. Details in [docs/roadmap.md](docs/roadmap.md).
 

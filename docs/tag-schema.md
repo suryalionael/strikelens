@@ -137,7 +137,7 @@ Alternatives considered:
 - `Blocked` moved to another key, keep `R`/`B` for fighters: `B` for blue is the most
   natural, but then Blocked needs a non-obvious key like `O`.
 
-Status: **proposed, not confirmed.** Confirm with the analyst who will use it most
-(and Freefly, if they have an opinion) before building issue #8. Record the final
-choice as an ADR. Hotkeys should be configurable later, so this is a default, not
+Status: **proposed, not confirmed.** The owner decides before building issue #8.
+Freefly is not contacted until Phase 4, so this does not wait for them. Record the
+final choice as an ADR. Hotkeys should be configurable later, so this is a default, not
 a lock-in.

@@ -56,8 +56,8 @@ need less correcting over time.
 
 ## What success looks like
 
-- Gate 1: one fight tagged in StrikeLens matches Freefly's own count closely, and
-  where it differs, we can explain why.
-- Gate 3: assisted tagging of a full fight takes clearly less time than Freefly's
-  current process. The exact target is set with Freefly once we know their baseline.
+- Gate 1: one fight tagged in StrikeLens matches the numbers Freefly published for
+  it closely, and where it differs, we can explain why.
+- Gate 3: assisted tagging of a full fight takes clearly less time than tagging the
+  same fight by hand in StrikeLens. Freefly's own baseline is asked in Phase 4.
 - Gate 4: Freefly's team uses v1 on real fights without help from the author.
