@@ -60,3 +60,53 @@ export interface Tag {
 
 /** What the tagger sends. The API fills in id, fight_id, and created_at. */
 export type TagInput = Omit<Tag, 'id' | 'fight_id' | 'created_at'>
+
+// GET /fights/{id}/stats. Calculated by apps/api/app/stats/core.py.
+
+export interface StatSplit {
+  attempts: number
+  landed: number
+  accuracy: number | null
+  strikes_per_minute: number | null
+}
+
+export interface RoundSplit extends StatSplit {
+  round: number
+}
+
+export interface MixEntry {
+  attempts: number
+  landed: number
+  share: number | null
+}
+
+export interface TargetEntry {
+  count: number
+  share: number | null
+}
+
+export interface FighterStats {
+  totals: StatSplit
+  by_round: RoundSplit[]
+  weapons: Record<string, MixEntry>
+  weapon_groups: Record<string, MixEntry>
+  targets_landed: Record<string, TargetEntry>
+  targets_attempted: Record<string, TargetEntry>
+}
+
+export interface RoundInfo {
+  number: number
+  start_ms: number
+  end_ms: number
+  time_s: number
+  partial: boolean
+}
+
+export interface FightStats {
+  fight_id: string
+  fight_time_s: number
+  rounds: RoundInfo[]
+  fighters: Record<Corner, FighterStats>
+  uncounted_tags: number
+  provisional_rules: string[]
+}
