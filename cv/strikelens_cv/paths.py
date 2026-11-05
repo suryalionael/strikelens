@@ -13,6 +13,11 @@ def data_dir() -> Path:
     return Path(os.environ.get("STRIKELENS_DATA_DIR", REPO_ROOT / "data"))
 
 
+def models_dir() -> Path:
+    """The models/ folder for local weights, or STRIKELENS_MODELS_DIR when set."""
+    return Path(os.environ.get("STRIKELENS_MODELS_DIR", REPO_ROOT / "models"))
+
+
 def fight_slug(name: str) -> str:
     """A safe folder name for a fight, for example "Byon 40 / Main" -> "byon-40-main"."""
     slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")

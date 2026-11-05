@@ -1,0 +1,18 @@
+# Settings for `strikelens-cv track` and `strikelens-cv assign`. Safe to commit.
+
+# YOLO weights file name, looked up in models/ (gitignored). Never downloaded
+# automatically. yolo11n.pt is the smallest Ultralytics model.
+weights = "yolo11n.pt"
+
+# Lowest YOLO confidence for a person box.
+confidence = 0.4
+
+# Image size YOLO resizes each frame to.
+image_size = 640
+
+# Tracks seen in fewer frames than this are ignored (passers-by, flicker).
+min_track_frames = 5
+
+# Colour distance (0 = same, 1 = nothing in common) above which a shot's match to
+# the red and blue references is marked uncertain and not used to update them.
+max_feature_distance = 0.5

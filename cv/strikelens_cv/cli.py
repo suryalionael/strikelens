@@ -4,10 +4,15 @@ import argparse
 import sys
 from collections.abc import Sequence
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from strikelens_cv import __version__
 from strikelens_cv.ingest.config import DEFAULT_CONFIG
 from strikelens_cv.segments.config import DEFAULT_SEGMENT_CONFIG
+from strikelens_cv.track.config import DEFAULT_TRACK_CONFIG
+
+if TYPE_CHECKING:
+    from strikelens_cv.track import TrackResult
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -45,6 +50,33 @@ def build_parser() -> argparse.ArgumentParser:
     suggest.add_argument(
         "--config", type=Path, default=DEFAULT_SEGMENT_CONFIG, help="TOML settings file"
     )
+
+    track = commands.add_parser(
+        "track",
+        help="find the two fighters in every frame (needs the detect extra)",
+        description="Detect and track people with YOLO and ByteTrack, shot by shot, then "
+        "assign red and blue. Reads the ingest output and writes detections.json and "
+        "tracks.json to data/processed/<fight>/.",
+    )
+    assign = commands.add_parser(
+        "assign",
+        help="redo red and blue from detections.json, for example with corrections",
+        description="Re-run the red and blue assignment without detecting again.",
+    )
+    swaps = commands.add_parser(
+        "swaps",
+        help="count red and blue swaps against a corrections file",
+        description="Compare the automatic assignment with the same detections "
+        "corrected by hand, and count how often red and blue were swapped.",
+    )
+    for command in (track, assign, swaps):
+        command.add_argument("--fight", required=True, help="fight name used at ingest")
+        command.add_argument(
+            "--config", type=Path, default=DEFAULT_TRACK_CONFIG, help="TOML settings file"
+        )
+    for command in (track, assign):
+        command.add_argument("--corrections", type=Path, help="track-corrections.json")
+    swaps.add_argument("--corrections", type=Path, required=True, help="track-corrections.json")
     return parser
 
 
@@ -85,6 +117,47 @@ def run_suggest(args: argparse.Namespace) -> int:
     return 0
 
 
+def _report_tracks(result: "TrackResult") -> None:
+    shots = result.assignment["shots"]
+    uncertain = sum(1 for s in shots if s["uncertain"])
+    seen = sum(1 for f in result.frames if f["red"] or f["blue"])
+    print(
+        f"{seen} of {len(result.frames)} frames have a fighter, {len(shots)} shots, "
+        f"{uncertain} uncertain. Written to {result.out_dir / 'tracks.json'}"
+    )
+    if result.assignment["seeded_by"] == "left_is_red":
+        print("Red was guessed as the fighter on the left in the first shot. Check it.")
+
+
+def run_track(args: argparse.Namespace, redo_only: bool) -> int:
+    from strikelens_cv.track import assign, load_track_config, track
+
+    name = "assign" if redo_only else "track"
+    try:
+        config = load_track_config(args.config)
+        result = (assign if redo_only else track)(args.fight, config, args.corrections)
+    except (FileNotFoundError, RuntimeError, ValueError) as error:
+        print(f"strikelens-cv {name}: {error}", file=sys.stderr)
+        return 1
+    _report_tracks(result)
+    return 0
+
+
+def run_swaps(args: argparse.Namespace) -> int:
+    from strikelens_cv.track import load_track_config, swaps
+
+    try:
+        report = swaps(args.fight, load_track_config(args.config), args.corrections)
+    except (FileNotFoundError, ValueError) as error:
+        print(f"strikelens-cv swaps: {error}", file=sys.stderr)
+        return 1
+    print(
+        f"{report['swaps']} {'swap' if report['swaps'] == 1 else 'swaps'}, "
+        f"{report['swapped_frames']} of {report['compared_frames']} compared frames swapped"
+    )
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -92,6 +165,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         return run_ingest(args)
     if args.command == "suggest":
         return run_suggest(args)
+    if args.command in ("track", "assign"):
+        return run_track(args, redo_only=args.command == "assign")
+    if args.command == "swaps":
+        return run_swaps(args)
     parser.print_help()
     return 0
 
