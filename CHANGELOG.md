@@ -64,6 +64,11 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `cv/configs/track.toml`, the filter can be switched off per fight, and a
   correction always wins. `strikelens-cv referee` reports how many referee tracks
   were removed and how many fighter tracks were removed by mistake (#20).
+- Pose keypoints: `strikelens-cv pose` runs MediaPipe on each fighter box from
+  tracking and writes 33 keypoints per frame to `keypoints/red.json` and
+  `blue.json`, with the format recorded. Frames without keypoints are null with a
+  reason (skipped, no box, no pose), never zeros. The backend can be swapped for
+  RTMPose. The model is read from `models/` and never downloaded (#21).
 
 ### Fixed
 
