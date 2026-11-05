@@ -23,6 +23,11 @@
       "type": "array",
       "items": { "$ref": "#/$defs/round" }
     },
+    "segments": {
+      "description": "Parts of the video that are not live fight action: replays, and non-fight shots such as the crowd or a corner. Tags inside them are not counted.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/segment" }
+    },
     "result": {
       "type": ["object", "null"],
       "additionalProperties": false,
@@ -42,6 +47,16 @@
         "number": { "type": "integer", "minimum": 1 },
         "start_ms": { "description": "Round start in video time (ms).", "type": "integer", "minimum": 0 },
         "end_ms": { "description": "Round end in video time (ms).", "type": "integer", "minimum": 0 }
+      }
+    },
+    "segment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "start_ms", "end_ms"],
+      "properties": {
+        "kind": { "enum": ["replay", "non_fight"] },
+        "start_ms": { "description": "Segment start in video time (ms).", "type": "integer", "minimum": 0 },
+        "end_ms": { "description": "Segment end in video time (ms), exclusive.", "type": "integer", "minimum": 0 }
       }
     }
   }

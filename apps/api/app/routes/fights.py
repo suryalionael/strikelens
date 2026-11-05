@@ -1,4 +1,4 @@
-"""CRUD for fights. Rounds and result are part of the fight."""
+"""CRUD for fights. Rounds, segments, and result are part of the fight."""
 
 import uuid
 
@@ -21,8 +21,9 @@ def _check_fighters_exist(session: Session, fight: FightFields) -> None:
 
 
 def _columns(fight: FightFields) -> dict[str, object]:
-    return fight.model_dump(mode="python", exclude={"id", "rounds", "result"}) | {
+    return fight.model_dump(mode="python", exclude={"id", "rounds", "segments", "result"}) | {
         "rounds": [r.model_dump() for r in fight.rounds],
+        "segments": [s.model_dump() for s in fight.segments],
         "result": fight.result.model_dump() if fight.result else None,
     }
 
@@ -52,7 +53,7 @@ def get_fight(fight_id: uuid.UUID, session: SessionDep) -> Fight:
 
 @router.put("/{fight_id}")
 def replace_fight(fight_id: uuid.UUID, body: FightFields, session: SessionDep) -> Fight:
-    """Replace a fight. Used to save round boundaries as the analyst marks them."""
+    """Replace a fight. Used to save rounds and segments as the analyst marks them."""
     row = get_or_404(session, FightRow, fight_id, "fight")
     _check_fighters_exist(session, body)
     for field, value in _columns(body).items():

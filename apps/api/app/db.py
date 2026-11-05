@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Annotated, Any
 
 from fastapi import Depends, Request
-from sqlalchemy import DateTime, Engine, create_engine, event
+from sqlalchemy import DateTime, Engine, create_engine, event, inspect, text
 from sqlalchemy.engine import Dialect
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 from sqlalchemy.types import TypeDecorator
@@ -70,6 +70,29 @@ def make_engine(url: str) -> Engine:
             cursor.close()
 
     return engine
+
+
+# Columns added after the first release. `create_all` makes new tables but never
+# changes existing ones, so a database from an older version gets them here.
+ADDED_COLUMNS: tuple[tuple[str, str, str], ...] = (
+    ("fights", "segments", "JSON NOT NULL DEFAULT '[]'"),
+)
+
+
+def upgrade_schema(engine: Engine) -> list[str]:
+    """Add missing columns to existing tables. Returns the columns added."""
+    inspector = inspect(engine)
+    tables = set(inspector.get_table_names())
+    added: list[str] = []
+    with engine.begin() as connection:
+        for table, column, definition in ADDED_COLUMNS:
+            if table not in tables:
+                continue
+            if column in {c["name"] for c in inspector.get_columns(table)}:
+                continue
+            connection.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {definition}"))
+            added.append(f"{table}.{column}")
+    return added
 
 
 def get_session(request: Request) -> Iterator[Session]:

@@ -28,6 +28,7 @@ Target = Literal["head", "body", "legs"]
 Source = Literal["human", "cv"]
 Status = Literal["pending", "confirmed", "rejected"]
 Winner = Literal["red", "blue", "draw", "no_contest"]
+SegmentKind = Literal["replay", "non_fight"]
 
 NonEmpty = Annotated[str, StringConstraints(min_length=1)]
 CountryCode = Annotated[str, StringConstraints(pattern=r"^[A-Z]{2}$")]
@@ -81,6 +82,14 @@ class Round(StrictModel):
     end_ms: int = Field(ge=0)
 
 
+class Segment(StrictModel):
+    """A replay or non-fight stretch of video. `end_ms` is exclusive."""
+
+    kind: SegmentKind
+    start_ms: int = Field(ge=0)
+    end_ms: int = Field(ge=0)
+
+
 class Result(StrictModel):
     winner: Winner | None = None
     method: str | None = None
@@ -96,6 +105,7 @@ class FightFields(StrictModel):
     scheduled_rounds: int = Field(ge=1)
     video_file: str | None = None
     rounds: list[Round] = Field(default_factory=list)
+    segments: list[Segment] = Field(default_factory=list)
     result: Result | None = None
 
     @model_validator(mode="after")
@@ -118,6 +128,18 @@ class FightFields(StrictModel):
             if previous is not None and r.start_ms < previous.end_ms:
                 raise ValueError(f"round {r.number} starts before round {previous.number} ends")
             previous = r
+        return self
+
+    @model_validator(mode="after")
+    def _valid_segments(self) -> Self:
+        """Segments run forward, in order, without overlapping. They may overlap rounds."""
+        previous: Segment | None = None
+        for s in self.segments:
+            if s.end_ms <= s.start_ms:
+                raise ValueError(f"segment at {s.start_ms} ms ends before it starts")
+            if previous is not None and s.start_ms < previous.end_ms:
+                raise ValueError(f"segment at {s.start_ms} ms overlaps the one before it")
+            previous = s
         return self
 
 
