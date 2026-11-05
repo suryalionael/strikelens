@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 from strikelens_cv import __version__
 from strikelens_cv.ingest.config import DEFAULT_CONFIG
+from strikelens_cv.pose.config import DEFAULT_POSE_CONFIG
 from strikelens_cv.segments.config import DEFAULT_SEGMENT_CONFIG
 from strikelens_cv.track.config import DEFAULT_TRACK_CONFIG
 
@@ -86,6 +87,15 @@ def build_parser() -> argparse.ArgumentParser:
         command.add_argument(
             "--corrections", type=Path, required=True, help="track-corrections.json"
         )
+
+    pose = commands.add_parser(
+        "pose",
+        help="keypoints for red and blue in every frame (needs the pose extra)",
+        description="Run the pose backend on each fighter box from tracks.json and "
+        "write keypoints/red.json and keypoints/blue.json to data/processed/<fight>/.",
+    )
+    pose.add_argument("--fight", required=True, help="fight name used at ingest")
+    pose.add_argument("--config", type=Path, default=DEFAULT_POSE_CONFIG, help="TOML settings file")
     return parser
 
 
@@ -187,6 +197,25 @@ def run_referee(args: argparse.Namespace) -> int:
     return 0
 
 
+def run_pose(args: argparse.Namespace) -> int:
+    from strikelens_cv.pose import count_missing, load_pose_config, pose
+
+    try:
+        result = pose(args.fight, load_pose_config(args.config))
+    except (FileNotFoundError, RuntimeError, ValueError) as error:
+        print(f"strikelens-cv pose: {error}", file=sys.stderr)
+        return 1
+    for corner, frames in result.frames.items():
+        counts = count_missing(frames)
+        print(
+            f"{corner}: keypoints in {counts['found']} of {len(frames)} frames "
+            f"(no box {counts['no_box']}, no pose {counts['no_pose']}, "
+            f"skipped {counts['skipped']})"
+        )
+    print(f"Written to {result.out_dir}")
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -200,6 +229,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return run_swaps(args)
     if args.command == "referee":
         return run_referee(args)
+    if args.command == "pose":
+        return run_pose(args)
     parser.print_help()
     return 0
 
