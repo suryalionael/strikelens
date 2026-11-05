@@ -43,9 +43,17 @@ A `confirmed` tag must have a weapon, outcome, and target.
 | `elbow` | Elbow | Any elbow strike |
 
 The "Group" column is how the stats page rolls weapons up into punch, kick, knee,
-and elbow. Whether Byon's rules allow elbows, and whether Freefly counts spinning
-or backfist strikes as their own category, are open questions (see
+and elbow.
+
+Byon fights under the UCC Kickstriking rules (see [rules.md](rules.md)). They
+allow slicing elbows, so `elbow` stays. They also allow the backfist, the
+spinning backfist, and other spinning and flying strikes, which this list cannot
+describe yet. Whether Freefly counts them as their own categories is open
+question 9 (see
 [stat-definitions.md](stat-definitions.md#open-questions-for-freefly)).
+Provisional: until Freefly answers, tag them with the closest weapon (a backfist
+as `hook`, a spinning kick as `kick`). This choice changes the weapon mix, so it
+is revisited with the answer.
 
 ### Outcomes
 

@@ -16,6 +16,7 @@ Everything about StrikeLens that is not code. Start with `vision.md`, then
 | Doc | What it covers |
 |---|---|
 | [architecture.md](architecture.md) | Components, data flow, tag lifecycle, training loop |
+| [rules.md](rules.md) | The UCC Kickstriking rules Byon fights under, and what they mean for StrikeLens |
 | [tag-schema.md](tag-schema.md) | Strike taxonomy, tag fields, default hotkeys |
 | [stat-definitions.md](stat-definitions.md) | Every stat formula, edge cases, open questions for Freefly |
 | [data-policy.md](data-policy.md) | Who owns what, what never goes in git |

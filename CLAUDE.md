@@ -109,6 +109,7 @@ Details: `docs/working-with-claude-code.md`.
 
 - Product scope and non-goals: `docs/vision.md`
 - Components and data flow: `docs/architecture.md`
+- Fight rules (UCC Kickstriking, which Byon uses): `docs/rules.md`
 - Strike taxonomy and hotkeys: `docs/tag-schema.md`
 - Stat formulas and open questions: `docs/stat-definitions.md`
 - What may and may not touch git: `docs/data-policy.md`
