@@ -84,11 +84,87 @@ frames = frames_outside(manifest["frames"], segments)
 generates itself. It skips unless FFmpeg and the `ingest` extra are installed, so
 it does not run in CI.
 
+## Track
+
+Finds the two fighters in every frame and keeps them red and blue. Needs the
+`ingest` and `detect` extras, ingest output for the fight, and YOLO weights in
+`models/`:
+
+```bash
+uv sync --extra ingest --extra detect
+uv run strikelens-cv track --fight "Byon 40 main event"
+```
+
+**Weights** are never committed and never downloaded automatically. Download
+`yolo11n.pt` from the [Ultralytics assets
+releases](https://github.com/ultralytics/assets/releases) and save it as
+`models/yolo11n.pt`. To use another model, set `weights` in `configs/track.toml`.
+Ultralytics is AGPL-3.0, which is why StrikeLens is too (ADR 0002).
+
+How it works:
+
+1. YOLO finds people in each frame and ByteTrack links them, shot by shot. The
+   tracker starts again at every camera cut from `cuts.json`. Frames inside
+   segments marked in the tagger are skipped. To use them, save the fight from the
+   API as `fight.json` first (see Replays above).
+2. In each shot, the two strongest tracks are the fighters. A track that never
+   overlaps a fighter in time is treated as the same fighter under a new ID. A
+   third person overlapping both is dropped. This is often the referee; the
+   proper referee filter is #20.
+3. Across shots, fighters are matched to red and blue by the colour of their
+   shorts: a hue and saturation histogram of the middle of the box.
+
+Writes to `data/processed/<fight>/` (gitignored):
+
+| File | Contents |
+|---|---|
+| `detections.json` | Every person box with its shot, ByteTrack ID, confidence, and colour feature |
+| `tracks.json` | Per frame, the red and blue box (or null). Per shot, which track IDs were red, blue, or dropped, and whether the match was uncertain |
+
+**Which fighter is red** cannot be known from the boxes alone. Without
+corrections, the fighter on the left in the first shot with two fighters is taken
+as red. `tracks.json` says so (`"seeded_by": "left_is_red"`) and the command
+prints a warning. Check that guess and correct it.
+
+### Corrections
+
+`track-corrections.json` fixes the assignment by hand. The tagger will write this
+file later. For now, write it yourself from the shot and track IDs in
+`tracks.json`:
+
+```json
+{"corrections": [
+  {"shot": 0, "track_id": 2, "corner": "red"},
+  {"shot": 4, "track_id": 7, "corner": "none"}
+]}
+```
+
+`corner` is `red`, `blue`, or `none`. `none` removes a track, for example the
+referee. A correction also teaches the colour references, so fixing one shot
+helps the shots after it. To redo the assignment without detecting again:
+
+```bash
+uv run strikelens-cv assign --fight "Byon 40 main event" --corrections track-corrections.json
+```
+
+### Counting swaps
+
+A swap is a stretch of frames where red and blue are the wrong way round. To
+measure it, correct every shot of a stretch, then compare that with the automatic
+assignment:
+
+```bash
+uv run strikelens-cv swaps --fight "Byon 40 main event" --corrections track-corrections.json
+```
+
+Settings are in `configs/track.toml`. `tests/test_track_end_to_end.py` runs YOLO
+on a synthetic clip. It skips unless the extras and the weights are installed.
+
 Subpackages:
 
 - `ingest/`: frame extraction (FFmpeg) and cut detection.
 - `segments/`: replay suggestions from the cut list, and skipping marked segments.
-- `track/`: fighter detection and tracking, two stable IDs, referee filter.
+- `track/`: fighter detection and tracking, two stable IDs, corrections, swap count.
 - `pose/`: keypoints per fighter.
 - `strikes/`: training windows, strike candidate model, inference to tags.
 - `overlay/`: render boxes, skeletons, and a strike timeline onto video.

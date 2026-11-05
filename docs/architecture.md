@@ -80,8 +80,10 @@ Stages run in order. Each stage reads from and writes to `data/processed/`.
    (`segment-suggestions.json`). The analyst loads them in the tagger, accepts or
    dismisses each, and marks other replays and non-fight shots by hand. Segments
    are saved on the fight. Later stages call `frames_outside` so they skip them.
-2. **Track:** YOLO detects people. ByteTrack links detections over time. A heuristic
-   keeps two stable fighter IDs and filters out the referee.
+2. **Track:** YOLO detects people. ByteTrack links detections within each shot. A
+   pure assignment step keeps two fighters per shot and matches them to red and
+   blue across cuts by the colour of their shorts. Corrections fix it by hand. The
+   referee filter (#20) plugs into that step.
 3. **Pose:** MediaPipe estimates keypoints for each fighter box.
 4. **Strikes:** a temporal model (CNN or LSTM) reads keypoint windows and outputs
    strike candidates with a weapon guess and a confidence.
