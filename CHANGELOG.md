@@ -48,10 +48,17 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - CV ingest: `strikelens-cv ingest` extracts frames with FFmpeg at the rate in
   `cv/configs/ingest.toml`, each mapped to video ms, and writes the shots between
   camera cuts found by PySceneDetect to `data/processed/<fight>/` (#17).
+- Replay and non-fight segments: mark them in the tagger, or accept likely replays
+  that `strikelens-cv` suggests from runs of short shots. Tags inside a segment are
+  flagged and not counted (`segment_tags` in the stats). Segments do not shorten
+  round time. Both rules are provisional (open question 12). Later CV stages can
+  skip segments with `frames_outside` (#18).
 
 ### Fixed
 
 - A fast second `Ctrl+Z` / `Cmd+Z` could undo the same step twice (#47).
+- A round mark changed while its save was still in flight could be left unsaved,
+  and a round save could undo a segment save made just before it (#18).
 
 ## [0.0.1] - 2026-11-03
 
