@@ -1,0 +1,15 @@
+# Settings for `strikelens-cv ingest`. Safe to commit: no paths to footage here.
+
+# Frames per second to extract. Strikes last a few hundred milliseconds, so 10 fps
+# keeps a few frames of each while staying light. Raise it for pose (#21).
+fps = 10
+
+# JPEG quality for FFmpeg's -q:v, from 2 (best) to 31 (smallest).
+jpeg_quality = 3
+
+# PySceneDetect ContentDetector threshold. Lower finds more cuts. 27 is its default.
+cut_threshold = 27.0
+
+# Shots shorter than this are merged into the previous shot, so a flash or a
+# single bad frame is not reported as a camera cut.
+min_shot_ms = 400

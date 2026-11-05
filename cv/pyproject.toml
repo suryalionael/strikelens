@@ -11,7 +11,7 @@ dependencies = []
 # Heavy dependencies are opt-in. None are installed by default or in CI.
 # RTMPose (MMPose) is not listed: it installs with OpenMMLab's `mim` tool, and its
 # dependency chumpy cannot be built by uv. See README and ADR 0004.
-ingest = ["opencv-python>=4.10", "scenedetect>=0.6"]
+ingest = ["opencv-python>=4.10", "scenedetect>=0.7"]
 detect = ["ultralytics>=8.3"]
 pose = ["mediapipe>=0.10"]
 train = ["torch>=2.5", "numpy>=1.26"]

@@ -25,6 +25,34 @@ RTMPose (the pose upgrade path) is not an extra. MMPose installs with OpenMMLab'
 `mim` tool (`uv pip install openmim && mim install mmpose`), and one of its
 dependencies cannot be built by uv. Do this only when ADR 0004 is revisited.
 
+## Ingest
+
+Needs FFmpeg on your PATH and the `ingest` extra.
+
+```bash
+uv sync --extra ingest
+uv run strikelens-cv ingest data/raw/fight.mp4 --fight "Byon 40 main event"
+```
+
+Writes to `data/processed/<fight>/` (gitignored):
+
+| File | Contents |
+|---|---|
+| `frames/000000.jpg` ... | One JPEG per 1/fps seconds. Frame N is at N × 1000 / fps ms |
+| `frames.json` | Every frame with its file name and `timestamp_ms` |
+| `cuts.json` | Shots between camera cuts, each with `start_ms` and `end_ms` |
+| `ingest.json` | The settings used and the video file name (never its path) |
+
+Timestamps count from the start of the video file, the same clock as the tagger
+and the tag schema's `timestamp_ms`. Settings are in `configs/ingest.toml` (frame
+rate, JPEG quality, cut threshold, shortest shot). Pass `--config` to use another
+file, and `--overwrite` to redo a fight's frames. Set `STRIKELENS_DATA_DIR` to
+write somewhere other than `data/`.
+
+`tests/test_ingest_end_to_end.py` runs the whole stage on a synthetic video it
+generates itself. It skips unless FFmpeg and the `ingest` extra are installed, so
+it does not run in CI.
+
 Subpackages:
 
 - `ingest/`: frame extraction (FFmpeg) and cut detection.

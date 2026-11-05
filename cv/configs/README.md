@@ -1,5 +1,7 @@
 # cv/configs/
 
-YAML configs for pipeline runs: detector settings, tracker settings, pose model
-choice, strike model hyperparameters. Configs are small text files and are safe
-to commit. Paths inside them should point into `data/` and `models/`.
+TOML configs for pipeline runs, read with Python's standard `tomllib`, so no extra
+dependency is needed. Configs are small text files and are safe to commit. They
+hold settings only, never paths to footage.
+
+- `ingest.toml`: frame rate, JPEG quality, and cut detection for `strikelens-cv ingest`.

@@ -1827,7 +1827,7 @@ requires-dist = [
     { name = "mediapipe", marker = "extra == 'pose'", specifier = ">=0.10" },
     { name = "numpy", marker = "extra == 'train'", specifier = ">=1.26" },
     { name = "opencv-python", marker = "extra == 'ingest'", specifier = ">=4.10" },
-    { name = "scenedetect", marker = "extra == 'ingest'", specifier = ">=0.6" },
+    { name = "scenedetect", marker = "extra == 'ingest'", specifier = ">=0.7" },
     { name = "torch", marker = "extra == 'train'", specifier = ">=2.5" },
     { name = "ultralytics", marker = "extra == 'detect'", specifier = ">=8.3" },
 ]
