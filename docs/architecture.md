@@ -82,8 +82,8 @@ Stages run in order. Each stage reads from and writes to `data/processed/`.
    are saved on the fight. Later stages call `frames_outside` so they skip them.
 2. **Track:** YOLO detects people. ByteTrack links detections within each shot. A
    pure assignment step keeps two fighters per shot and matches them to red and
-   blue across cuts by the colour of their shorts. Corrections fix it by hand. The
-   referee filter (#20) plugs into that step.
+   blue across cuts by the colour of their shorts. Corrections fix it by hand.
+   Tracks whose chest is mostly not skin are dropped as the referee (#20).
 3. **Pose:** MediaPipe estimates keypoints for each fighter box.
 4. **Strikes:** a temporal model (CNN or LSTM) reads keypoint windows and outputs
    strike candidates with a weapon guess and a confidence.

@@ -21,6 +21,7 @@ from strikelens_cv.track.assign import (
 )
 from strikelens_cv.track.config import TrackConfig
 from strikelens_cv.track.corrections import Corrections, load_corrections
+from strikelens_cv.track.referee import RefereeReport, is_referee, referee_report
 from strikelens_cv.track.swaps import SwapReport, count_swaps
 
 WEIGHTS_HELP = (
@@ -110,7 +111,12 @@ def _assignment(
     data: dict[str, Any], config: TrackConfig, corrections: Corrections | None
 ) -> tuple[Assignment, list[TrackFrame]]:
     detections: list[Detection] = data["detections"]
-    assignment = assign_corners(summarise_tracks(detections), config, corrections)
+    assignment = assign_corners(
+        summarise_tracks(detections),
+        config,
+        corrections,
+        is_excluded=lambda track: is_referee(track, config),
+    )
     return assignment, build_tracks(data["frames"], detections, assignment)
 
 
@@ -139,3 +145,11 @@ def swaps(fight: str, config: TrackConfig, corrections: Path) -> SwapReport:
     _, auto = _assignment(data, config, None)
     _, truth = _assignment(data, config, load_corrections(corrections))
     return count_swaps(auto, truth)
+
+
+def referee(fight: str, config: TrackConfig, corrections: Path) -> RefereeReport:
+    """How well the referee filter does, with the corrections as the truth."""
+    data = _read(processed_dir(fight) / "detections.json", "run strikelens-cv track first")
+    return referee_report(
+        summarise_tracks(data["detections"]), load_corrections(corrections), config
+    )

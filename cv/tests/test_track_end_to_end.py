@@ -78,7 +78,8 @@ def test_track_two_people(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> No
         check=True,
     )
     ingest(video, "two-people", IngestConfig(fps=5))
-    result = track("two-people", TrackConfig(min_track_frames=3))
+    # Filter off: this checks tracking. Whether the filter is right needs ring footage.
+    result = track("two-people", TrackConfig(min_track_frames=3, referee_filter=False))
 
     assert result.assignment["seeded_by"] == "left_is_red"
     with_both = [f for f in result.frames if f["red"] and f["blue"]]
@@ -86,3 +87,6 @@ def test_track_two_people(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> No
     first = with_both[0]
     assert first["red"] is not None and first["blue"] is not None
     assert first["red"][0] < first["blue"][0]  # red is the one on the left
+    # Every box gets a chest skin measure for the referee filter.
+    detections = json.loads((result.out_dir / "detections.json").read_text())["detections"]
+    assert all("torso_skin" in d for d in detections)

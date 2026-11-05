@@ -16,3 +16,18 @@ min_track_frames = 5
 # Colour distance (0 = same, 1 = nothing in common) above which a shot's match to
 # the red and blue references is marked uncertain and not used to update them.
 max_feature_distance = 0.5
+
+# Referee filter (#20). Fighters are shirtless and the referee wears a shirt, so a
+# track whose chest is mostly not skin is taken as the referee and dropped.
+# Turn it off for fights where fighters wear a top (for example a sports top or a
+# rash guard), or they will be dropped too. A correction always beats the filter.
+referee_filter = true
+
+# Lowest share of skin pixels on the chest for a fighter (0 to 1).
+min_torso_skin = 0.25
+
+# Skin colour ranges in YCrCb (0-255). Brightness (Y) is ignored, so the same
+# range covers light and dark skin. These are the usual values from the skin
+# detection literature; check them on real footage before changing.
+skin_cr = [133, 173]
+skin_cb = [77, 127]

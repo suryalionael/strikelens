@@ -10,7 +10,7 @@ All functions here are pure: plain lists and dicts in, plain lists and dicts out
 from collections import defaultdict
 from collections.abc import Callable, Iterable, Sequence
 from itertools import permutations
-from typing import Literal, TypedDict
+from typing import Literal, NotRequired, TypedDict
 
 from strikelens_cv.track.config import TrackConfig
 from strikelens_cv.track.corrections import Corner, Corrections
@@ -28,6 +28,8 @@ class Detection(TypedDict):
     box: Box
     confidence: float
     feature: list[float]
+    # Share of skin on the chest, for the referee filter. Missing before #20.
+    torso_skin: NotRequired[float | None]
 
 
 class FrameInfo(TypedDict):
@@ -46,6 +48,7 @@ class TrackSummary(TypedDict):
     mean_area: float
     mean_x: float
     feature: list[float]
+    torso_skin: float | None
 
 
 class Fighter(TypedDict):
@@ -115,6 +118,7 @@ def summarise_tracks(detections: Iterable[Detection]) -> list[TrackSummary]:
     summaries: list[TrackSummary] = []
     for (shot, track_id), items in sorted(grouped.items()):
         areas = [_area(d["box"]) for d in items]
+        skins = [s for d in items if (s := d.get("torso_skin")) is not None]
         summaries.append(
             {
                 "shot": shot,
@@ -125,6 +129,7 @@ def summarise_tracks(detections: Iterable[Detection]) -> list[TrackSummary]:
                 "mean_area": sum(areas) / len(items),
                 "mean_x": sum((d["box"][0] + d["box"][2]) / 2 for d in items) / len(items),
                 "feature": _weighted_mean([d["feature"] for d in items], [1.0] * len(items)),
+                "torso_skin": sum(skins) / len(skins) if skins else None,
             }
         )
     return summaries

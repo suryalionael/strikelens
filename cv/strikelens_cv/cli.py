@@ -69,14 +69,23 @@ def build_parser() -> argparse.ArgumentParser:
         description="Compare the automatic assignment with the same detections "
         "corrected by hand, and count how often red and blue were swapped.",
     )
-    for command in (track, assign, swaps):
+    referee = commands.add_parser(
+        "referee",
+        help="measure the referee filter against a corrections file",
+        description="Share of referee tracks removed and of fighter tracks wrongly "
+        "removed. Tracks corrected to none count as the referee.",
+    )
+    for command in (track, assign, swaps, referee):
         command.add_argument("--fight", required=True, help="fight name used at ingest")
         command.add_argument(
             "--config", type=Path, default=DEFAULT_TRACK_CONFIG, help="TOML settings file"
         )
     for command in (track, assign):
         command.add_argument("--corrections", type=Path, help="track-corrections.json")
-    swaps.add_argument("--corrections", type=Path, required=True, help="track-corrections.json")
+    for command in (swaps, referee):
+        command.add_argument(
+            "--corrections", type=Path, required=True, help="track-corrections.json"
+        )
     return parser
 
 
@@ -158,6 +167,26 @@ def run_swaps(args: argparse.Namespace) -> int:
     return 0
 
 
+def _percent(share: float | None) -> str:
+    return "n/a" if share is None else f"{share:.0%}"
+
+
+def run_referee(args: argparse.Namespace) -> int:
+    from strikelens_cv.track import load_track_config, referee
+
+    try:
+        report = referee(args.fight, load_track_config(args.config), args.corrections)
+    except (FileNotFoundError, ValueError) as error:
+        print(f"strikelens-cv referee: {error}", file=sys.stderr)
+        return 1
+    print(
+        f"Referee tracks removed: {_percent(report['referee_removed'])} "
+        f"of {report['referee_tracks']}. Fighter tracks wrongly removed: "
+        f"{_percent(report['fighter_removed'])} of {report['fighter_tracks']}."
+    )
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -169,6 +198,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return run_track(args, redo_only=args.command == "assign")
     if args.command == "swaps":
         return run_swaps(args)
+    if args.command == "referee":
+        return run_referee(args)
     parser.print_help()
     return 0
 

@@ -107,10 +107,10 @@ How it works:
    tracker starts again at every camera cut from `cuts.json`. Frames inside
    segments marked in the tagger are skipped. To use them, save the fight from the
    API as `fight.json` first (see Replays above).
-2. In each shot, the two strongest tracks are the fighters. A track that never
+2. Tracks that look like the referee are dropped (see Referee filter). In each
+   shot, the two strongest remaining tracks are the fighters. A track that never
    overlaps a fighter in time is treated as the same fighter under a new ID. A
-   third person overlapping both is dropped. This is often the referee; the
-   proper referee filter is #20.
+   third person overlapping both is dropped.
 3. Across shots, fighters are matched to red and blue by the colour of their
    shorts: a hue and saturation histogram of the middle of the box.
 
@@ -125,6 +125,38 @@ Writes to `data/processed/<fight>/` (gitignored):
 corrections, the fighter on the left in the first shot with two fighters is taken
 as red. `tracks.json` says so (`"seeded_by": "left_is_red"`) and the command
 prints a warning. Check that guess and correct it.
+
+### Referee filter
+
+Kickboxers fight shirtless and the referee wears a shirt. For each box, `track`
+measures how much of the chest (20-45% down the box, middle half across) is
+skin, and stores it as `torso_skin` in `detections.json`. A track whose average is
+below `min_torso_skin` (0.25) is dropped as the referee.
+
+Skin is found with the usual YCrCb rule. Each pixel's Cr and Cb must fall inside
+`skin_cr` and `skin_cb`. Brightness is ignored, so one range covers light and dark
+skin. All of these are in `configs/track.toml`.
+
+Known limits. Check these on real footage before trusting the filter:
+
+- **Fighters in a top** (a sports top or a rash guard) look like the referee. Set
+  `referee_filter = false` for those fights, or pin the fighters with corrections.
+  A correction always beats the filter.
+- **Skin-coloured things count as skin**: a beige or brown shirt, a warm
+  background, or a face. In close-ups the chest band can catch the face. On
+  Ultralytics' sample photo of two men in suits, the band measured 40% and 56% skin,
+  so neither would be removed. Wide ring shots frame people full-length, which
+  should help, but this is not measured yet.
+
+To measure the filter, correct some tracks (referee as `none`, fighters as `red` or
+`blue`), then:
+
+```bash
+uv run strikelens-cv referee --fight "Byon 40 main event" --corrections track-corrections.json
+```
+
+It prints the share of referee tracks removed and the share of fighter tracks
+wrongly removed.
 
 ### Corrections
 
