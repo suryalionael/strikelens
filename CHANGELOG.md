@@ -59,6 +59,11 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   file, and `swaps` counts red and blue swaps against it. Weights are read from
   `models/` and never downloaded. Red is guessed as the left fighter until
   corrected (#19).
+- Referee filter: tracking drops a person whose chest is mostly not skin, since
+  kickboxers fight shirtless and the referee wears a shirt. Thresholds live in
+  `cv/configs/track.toml`, the filter can be switched off per fight, and a
+  correction always wins. `strikelens-cv referee` reports how many referee tracks
+  were removed and how many fighter tracks were removed by mistake (#20).
 
 ### Fixed
 
