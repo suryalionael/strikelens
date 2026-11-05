@@ -61,6 +61,7 @@ flowchart TB
   current video time. Hotkeys are in [tag-schema.md](tag-schema.md).
 - Shows a per-round timeline with red and blue lanes. Click a tag to seek.
 - Review mode steps through pending CV suggestions.
+- Marks replays and non-fight segments, and flags tags inside them.
 - Displays stats returned by the API. Components do no stat math.
 
 ### API
@@ -75,7 +76,10 @@ flowchart TB
 Stages run in order. Each stage reads from and writes to `data/processed/`.
 
 1. **Ingest:** FFmpeg extracts frames at a fixed rate. PySceneDetect finds camera
-   cuts. Replays and non-fight segments are marked (manual first, auto-suggest later).
+   cuts. Runs of short shots in the cut list are written out as likely replays
+   (`segment-suggestions.json`). The analyst loads them in the tagger, accepts or
+   dismisses each, and marks other replays and non-fight shots by hand. Segments
+   are saved on the fight. Later stages call `frames_outside` so they skip them.
 2. **Track:** YOLO detects people. ByteTrack links detections over time. A heuristic
    keeps two stable fighter IDs and filters out the referee.
 3. **Pose:** MediaPipe estimates keypoints for each fighter box.

@@ -41,6 +41,7 @@ Writes to `data/processed/<fight>/` (gitignored):
 | `frames/000000.jpg` ... | One JPEG per 1/fps seconds. Frame N is at N × 1000 / fps ms |
 | `frames.json` | Every frame with its file name and `timestamp_ms` |
 | `cuts.json` | Shots between camera cuts, each with `start_ms` and `end_ms` |
+| `segment-suggestions.json` | Likely replays: runs of short shots in the cut list |
 | `ingest.json` | The settings used and the video file name (never its path) |
 
 Timestamps count from the start of the video file, the same clock as the tagger
@@ -49,6 +50,36 @@ rate, JPEG quality, cut threshold, shortest shot). Pass `--config` to use anothe
 file, and `--overwrite` to redo a fight's frames. Set `STRIKELENS_DATA_DIR` to
 write somewhere other than `data/`.
 
+## Replays and non-fight segments
+
+Ingest also writes `segment-suggestions.json`. A run of at least `min_run` shots in
+a row, each shorter than `short_shot_ms`, is suggested as a likely replay, because
+live coverage holds a wide shot for a long time and replays cut quickly between
+angles. Settings are in `configs/segments.toml`. To try other settings without
+redoing frames:
+
+```bash
+uv run strikelens-cv suggest --fight "Byon 40 main event" --config configs/segments.toml
+```
+
+In the tagger, pick the file under "Load suggestions" and accept or dismiss each
+one. Accepted and hand-marked segments are saved on the fight. Slow-motion
+detection is not done yet.
+
+Stages after ingest skip marked segments. Save the fight from the API next to the
+other output, then filter frames with `strikelens_cv.segments`:
+
+```bash
+curl -s http://localhost:8000/fights/<fight-id> > data/processed/<fight>/fight.json
+```
+
+```python
+from strikelens_cv.segments import frames_outside, load_segments
+
+segments = load_segments(out_dir / "fight.json")
+frames = frames_outside(manifest["frames"], segments)
+```
+
 `tests/test_ingest_end_to_end.py` runs the whole stage on a synthetic video it
 generates itself. It skips unless FFmpeg and the `ingest` extra are installed, so
 it does not run in CI.
@@ -56,6 +87,7 @@ it does not run in CI.
 Subpackages:
 
 - `ingest/`: frame extraction (FFmpeg) and cut detection.
+- `segments/`: replay suggestions from the cut list, and skipping marked segments.
 - `track/`: fighter detection and tracking, two stable IDs, referee filter.
 - `pose/`: keypoints per fighter.
 - `strikes/`: training windows, strike candidate model, inference to tags.
