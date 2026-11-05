@@ -53,6 +53,12 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   flagged and not counted (`segment_tags` in the stats). Segments do not shorten
   round time. Both rules are provisional (open question 12). Later CV stages can
   skip segments with `frames_outside` (#18).
+- CV tracking: `strikelens-cv track` finds people with YOLO and ByteTrack shot by
+  shot, keeps two fighters per shot, and matches them to red and blue across cuts
+  by the colour of their shorts. `assign` redoes the matching with a corrections
+  file, and `swaps` counts red and blue swaps against it. Weights are read from
+  `models/` and never downloaded. Red is guessed as the left fighter until
+  corrected (#19).
 
 ### Fixed
 
