@@ -192,12 +192,56 @@ uv run strikelens-cv swaps --fight "Byon 40 main event" --corrections track-corr
 Settings are in `configs/track.toml`. `tests/test_track_end_to_end.py` runs YOLO
 on a synthetic clip. It skips unless the extras and the weights are installed.
 
+## Pose
+
+Pose finds keypoints for the red and the blue fighter in every frame. It needs
+the ingest and pose extras, and the MediaPipe model in `models/`:
+
+```bash
+uv sync --extra ingest --extra detect --extra pose
+uv run strikelens-cv pose --fight "Byon 40 main event"
+```
+
+Get `pose_landmarker_full.task` from the [MediaPipe Pose Landmarker
+models](https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker#models)
+and save it in `models/`. It is never downloaded automatically.
+
+Each fighter box from `tracks.json` is padded by 10% (`box_margin`) so fists and
+feet are not cut off, then MediaPipe looks for one person in the crop. Output goes
+to `data/processed/<fight>/keypoints/red.json` and `blue.json`:
+
+- `format`: `mediapipe_pose_33`, and `landmarks`: the 33 names in order. Training
+  windows must keep this, so keypoints from another backend are never mixed in.
+- `fighter_id`: from `fight.json` when it is there (see Replays above), else null.
+- `frames`: per frame, the `index`, `timestamp_ms`, `box`, and `keypoints`: one
+  `[x, y, z, visibility]` per landmark. `x` and `y` are image pixels. `z` is
+  MediaPipe's depth, scaled by the crop width, so only its relative size means
+  anything.
+- A frame without keypoints has `keypoints: null` and a `missing` reason, never
+  zeros: `skipped` (inside a replay or non-fight segment), `no_box` (tracking found
+  no fighter), or `no_pose` (MediaPipe found nobody, or was below
+  `min_pose_confidence`).
+
+The command prints how many frames have keypoints and how many are missing, per
+corner. Settings are in `configs/pose.toml`.
+
+Known limit: a person cut off by the frame edge often gets no pose. On a sample
+photo, MediaPipe found 33 and 32 visible keypoints for the two people in full
+view, and nothing for the two cut off at the edges. How it does on clinches, fast
+kicks, and motion blur is unmeasured until a practice clip (#3) and the overlay
+video (#22).
+
+The backend sits behind a small interface (`pose/backend.py`: an image and a box
+in, keypoints out), so RTMPose can replace MediaPipe (ADR 0004).
+`tests/test_pose_end_to_end.py` runs MediaPipe on a sample photo. It skips unless
+the pose extra and the model are installed.
+
 Subpackages:
 
 - `ingest/`: frame extraction (FFmpeg) and cut detection.
 - `segments/`: replay suggestions from the cut list, and skipping marked segments.
 - `track/`: fighter detection and tracking, two stable IDs, corrections, swap count.
-- `pose/`: keypoints per fighter.
+- `pose/`: keypoints per fighter per frame, behind a swappable backend.
 - `strikes/`: training windows, strike candidate model, inference to tags.
 - `overlay/`: render boxes, skeletons, and a strike timeline onto video.
 

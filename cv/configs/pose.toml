@@ -1,0 +1,16 @@
+# Settings for `strikelens-cv pose`. Safe to commit.
+
+# Pose backend. Only MediaPipe for now; RTMPose is the upgrade path (ADR 0004).
+backend = "mediapipe"
+
+# Model file name, looked up in models/ (gitignored). Never downloaded
+# automatically. See models/README.md.
+model = "pose_landmarker_full.task"
+
+# Each fighter box is padded by this share of its width and height before pose
+# runs, so feet, fists, and kicks that reach past the box are not cut off.
+box_margin = 0.1
+
+# Lowest MediaPipe confidence (0 to 1) for a pose to count. Below it, the frame
+# is stored as missing.
+min_pose_confidence = 0.5

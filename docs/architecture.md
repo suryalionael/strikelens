@@ -84,7 +84,9 @@ Stages run in order. Each stage reads from and writes to `data/processed/`.
    pure assignment step keeps two fighters per shot and matches them to red and
    blue across cuts by the colour of their shorts. Corrections fix it by hand.
    Tracks whose chest is mostly not skin are dropped as the referee (#20).
-3. **Pose:** MediaPipe estimates keypoints for each fighter box.
+3. **Pose:** MediaPipe estimates 33 keypoints in each fighter box (padded a little),
+   per frame, and writes `keypoints/red.json` and `blue.json`. Missing frames are
+   null with a reason. The backend is swappable for RTMPose (ADR 0004).
 4. **Strikes:** a temporal model (CNN or LSTM) reads keypoint windows and outputs
    strike candidates with a weapon guess and a confidence.
 5. **Overlay:** renders boxes, skeletons, and a strike timeline onto video for demos.
