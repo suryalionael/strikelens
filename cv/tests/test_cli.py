@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import pytest
@@ -30,3 +31,18 @@ def test_ingest_needs_a_fight_name(capsys: pytest.CaptureFixture[str]) -> None:
         main(["ingest", "fight.mp4"])
     assert exc.value.code == 2
     assert "--fight" in capsys.readouterr().err
+
+
+def test_suggest_needs_a_cut_list(data_dir: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    assert main(["suggest", "--fight", "x"]) == 1
+    assert "run strikelens-cv ingest first" in capsys.readouterr().err
+
+
+def test_suggest_writes_the_file(data_dir: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    out = data_dir / "processed" / "x"
+    out.mkdir(parents=True)
+    shots = [{"index": i, "start_ms": i * 500, "end_ms": (i + 1) * 500} for i in range(4)]
+    (out / "cuts.json").write_text(json.dumps({"duration_ms": 2_000, "shots": shots}))
+    assert main(["suggest", "--fight", "x"]) == 0
+    assert "1 likely replay written" in capsys.readouterr().out
+    assert (out / "segment-suggestions.json").is_file()
