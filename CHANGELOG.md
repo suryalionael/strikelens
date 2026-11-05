@@ -45,6 +45,9 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Tagger export: four 1080x1350 PNG stat cards for an Instagram carousel, each
   with the fighters, an editable credit line, and a provisional-definitions note;
   a CSV of confirmed tags in tag schema columns; and a long-format stats CSV (#15).
+- CV ingest: `strikelens-cv ingest` extracts frames with FFmpeg at the rate in
+  `cv/configs/ingest.toml`, each mapped to video ms, and writes the shots between
+  camera cuts found by PySceneDetect to `data/processed/<fight>/` (#17).
 
 ### Fixed
 
