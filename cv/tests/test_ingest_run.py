@@ -44,6 +44,9 @@ def test_writes_frames_cuts_and_settings(video: Path, data_dir: Path) -> None:
             {"index": 1, "start_ms": 2_000, "end_ms": 4_000},
         ],
     }
+    # Two 2 s shots are not a run of short shots, so nothing is suggested.
+    suggestions = json.loads((out / "segment-suggestions.json").read_text())
+    assert suggestions["suggestions"] == []
     settings = json.loads((out / "ingest.json").read_text())
     assert settings["config"]["fps"] == 10
     assert settings["frame_count"] == 1

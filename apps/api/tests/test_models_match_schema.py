@@ -85,6 +85,19 @@ FIGHT_CASES: dict[str, dict[str, Any]] = {
     "round-zero": _fight(rounds=[{"number": 0, "start_ms": 0, "end_ms": 1}]),
     "round-extra-field": _fight(rounds=[{"number": 1, "start_ms": 0, "end_ms": 1, "x": 1}]),
     "no-rounds-field": {k: v for k, v in FIGHT.items() if k != "rounds"},
+    "with-segments": _fight(
+        segments=[
+            {"kind": "replay", "start_ms": 60_000, "end_ms": 70_000},
+            {"kind": "non_fight", "start_ms": 181_000, "end_ms": 200_000},
+        ]
+    ),
+    "empty-segments": _fight(segments=[]),
+    "segment-bad-kind": _fight(segments=[{"kind": "slow_motion", "start_ms": 0, "end_ms": 1}]),
+    "segment-no-end": _fight(segments=[{"kind": "replay", "start_ms": 0}]),
+    "segment-negative": _fight(segments=[{"kind": "replay", "start_ms": -1, "end_ms": 1}]),
+    "segment-extra-field": _fight(
+        segments=[{"kind": "replay", "start_ms": 0, "end_ms": 1, "reason": "x"}]
+    ),
 }
 
 

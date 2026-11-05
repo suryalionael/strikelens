@@ -24,8 +24,9 @@ export function StatsPanel({ fight, refreshKey }: Props) {
   const fightId = fight?.id ?? null
   const redId = fight?.red_fighter_id ?? null
   const blueId = fight?.blue_fighter_id ?? null
-  // Round marks change fight time, so a round save refreshes the stats too.
-  const roundsKey = JSON.stringify(fight?.rounds ?? [])
+  // Round marks change fight time and segments change what counts, so saving
+  // either refreshes the stats too.
+  const marksKey = JSON.stringify([fight?.rounds ?? [], fight?.segments ?? []])
 
   useEffect(() => {
     if (fightId === null) return
@@ -43,7 +44,7 @@ export function StatsPanel({ fight, refreshKey }: Props) {
     return () => {
       cancelled = true
     }
-  }, [fightId, refreshKey, roundsKey])
+  }, [fightId, refreshKey, marksKey])
 
   useEffect(() => {
     if (redId === null || blueId === null) return
@@ -82,6 +83,12 @@ export function StatsPanel({ fight, refreshKey }: Props) {
             <p role="status" className="text-xs text-amber-400">
               {stats.uncounted_tags} confirmed {stats.uncounted_tags === 1 ? 'tag is' : 'tags are'}{' '}
               outside every marked round and not counted.
+            </p>
+          )}
+          {stats.segment_tags > 0 && (
+            <p role="status" className="text-xs text-amber-400">
+              {stats.segment_tags} confirmed {stats.segment_tags === 1 ? 'tag is' : 'tags are'}{' '}
+              inside a replay or non-fight segment and not counted.
             </p>
           )}
           {stats.rounds.some((r) => r.partial) && (

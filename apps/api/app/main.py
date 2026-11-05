@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import sessionmaker
 
-from app.db import Base, cors_origins, database_url, make_engine
+from app.db import Base, cors_origins, database_url, make_engine, upgrade_schema
 from app.models import tables  # noqa: F401  (registers the tables on Base)
 from app.routes import fighters, fights, stats, tags
 
@@ -19,6 +19,7 @@ def create_app(db_url: str | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         Base.metadata.create_all(engine)
+        upgrade_schema(engine)
         yield
         engine.dispose()
 

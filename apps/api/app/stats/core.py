@@ -37,10 +37,13 @@ PROVISIONAL_RULES: tuple[str, ...] = (
     "Pauses inside a round count as fight time.",
     "Target distribution is based on landed strikes; the attempts version is also shown.",
     "When fewer rounds are marked than scheduled, the last marked round is partial.",
+    "Tags inside replays and non-fight segments are not counted.",
+    "Replays and non-fight segments still count as round time.",
 )
 
 Tag = Mapping[str, Any]
 Round = Mapping[str, Any]
+Segment = Mapping[str, Any]
 
 
 class Split(TypedDict):
@@ -87,6 +90,7 @@ class FightStats(TypedDict):
     rounds: list[RoundInfo]
     fighters: dict[Corner, FighterStats]
     uncounted_tags: int
+    segment_tags: int
 
 
 # Basic ratios
@@ -174,12 +178,30 @@ def in_marked_round(tag: Tag, rounds: Iterable[Round]) -> bool:
     )
 
 
-def counted_tags(tags: Iterable[Tag], rounds: Sequence[Round]) -> list[Tag]:
-    """Tags that count towards stats: confirmed, and inside their marked round.
+def in_segment(tag: Tag, segments: Iterable[Segment]) -> bool:
+    """True when the tag falls inside a replay or non-fight segment.
+
+    The end is exclusive, so a tag on the frame the broadcast cuts back to live is
+    not inside the segment.
+    """
+    return any(s["start_ms"] <= tag["timestamp_ms"] < s["end_ms"] for s in segments)
+
+
+def counted_tags(
+    tags: Iterable[Tag], rounds: Sequence[Round], segments: Sequence[Segment] = ()
+) -> list[Tag]:
+    """Tags that count towards stats: confirmed, inside their marked round, and not
+    inside a segment.
 
     Source does not matter. A confirmed CV suggestion counts like a human tag.
+    Provisional: a replay repeats strikes already tagged live, so tags inside one
+    are left out rather than counted twice.
     """
-    return [t for t in tags if t["status"] == "confirmed" and in_marked_round(t, rounds)]
+    return [
+        t
+        for t in tags
+        if t["status"] == "confirmed" and in_marked_round(t, rounds) and not in_segment(t, segments)
+    ]
 
 
 # Splits and distributions
@@ -255,15 +277,25 @@ def fighter_stats(tags: Sequence[Tag], rounds: Sequence[Round]) -> FighterStats:
     }
 
 
-def fight_stats(tags: Iterable[Tag], rounds: Sequence[Round], scheduled_rounds: int) -> FightStats:
+def fight_stats(
+    tags: Iterable[Tag],
+    rounds: Sequence[Round],
+    scheduled_rounds: int,
+    segments: Sequence[Segment] = (),
+) -> FightStats:
     """Every v1 stat for both fighters in one fight.
 
-    `uncounted_tags` is how many confirmed tags fall outside every marked round,
-    for example after the bell, so the tagger can warn about them.
+    The tagger warns about confirmed tags that are not counted:
+    `segment_tags` are inside a replay or non-fight segment, and `uncounted_tags`
+    are outside every marked round (for example after the bell). A tag is in at
+    most one of the two; inside a segment wins.
+
+    Provisional: segments do not shorten round time (see docs/stat-definitions.md).
     """
     all_tags = list(tags)
-    counted = counted_tags(all_tags, rounds)
-    confirmed = sum(1 for t in all_tags if t["status"] == "confirmed")
+    counted = counted_tags(all_tags, rounds, segments)
+    confirmed = [t for t in all_tags if t["status"] == "confirmed"]
+    in_segments = sum(1 for t in confirmed if in_segment(t, segments))
     partial = partial_rounds(rounds, scheduled_rounds)
     return {
         "fight_time_s": fight_time_s(rounds),
@@ -281,5 +313,6 @@ def fight_stats(tags: Iterable[Tag], rounds: Sequence[Round], scheduled_rounds: 
             corner: fighter_stats([t for t in counted if t["fighter"] == corner], rounds)
             for corner in CORNERS
         },
-        "uncounted_tags": confirmed - len(counted),
+        "uncounted_tags": len(confirmed) - in_segments - len(counted),
+        "segment_tags": in_segments,
     }

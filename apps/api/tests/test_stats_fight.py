@@ -12,6 +12,7 @@ from app.stats.core import (
     fight_stats,
     fight_time_s,
     in_marked_round,
+    in_segment,
     partial_rounds,
     round_time_s,
     share,
@@ -176,6 +177,47 @@ class TestTargetDistribution:
     def test_zero_landed_is_undefined(self) -> None:
         dist = target_distribution([tag(outcome="missed")], "landed")
         assert all(entry["share"] is None for entry in dist.values())
+
+
+REPLAY = {"kind": "replay", "start_ms": 60_000, "end_ms": 70_000}
+CROWD = {"kind": "non_fight", "start_ms": 100_000, "end_ms": 110_000}
+
+
+class TestSegments:
+    def test_start_is_inside_and_end_is_not(self) -> None:
+        assert in_segment(tag(ms=60_000), [REPLAY])
+        assert in_segment(tag(ms=69_999), [REPLAY])
+        assert not in_segment(tag(ms=70_000), [REPLAY])
+        assert not in_segment(tag(ms=59_999), [REPLAY])
+
+    def test_no_segments(self) -> None:
+        assert not in_segment(tag(), [])
+
+    def test_tags_inside_any_segment_do_not_count(self) -> None:
+        tags = [tag(ms=65_000), tag(ms=105_000), tag(ms=80_000)]
+        assert counted_tags(tags, ROUNDS, [REPLAY, CROWD]) == [tags[2]]
+
+    def test_segments_are_optional(self) -> None:
+        assert counted_tags([tag(ms=65_000)], ROUNDS) == [tag(ms=65_000)]
+
+    def test_fight_stats_reports_segment_tags_separately(self) -> None:
+        tags = [
+            tag(ms=65_000),  # in the replay
+            tag(ms=105_000, status="pending"),  # pending, ignored everywhere
+            tag(ms=200_000),  # between rounds, but in the crowd shot
+            tag(ms=205_000, round_=2),  # between rounds, outside every segment
+            tag(ms=10_000),  # counted
+        ]
+        crowd_between_rounds = {"kind": "non_fight", "start_ms": 200_000, "end_ms": 201_000}
+        stats = fight_stats(tags, ROUNDS, 2, [REPLAY, crowd_between_rounds])
+        assert stats["segment_tags"] == 2
+        assert stats["uncounted_tags"] == 1
+        assert stats["fighters"]["red"]["totals"]["attempts"] == 1
+
+    def test_segments_do_not_shorten_round_time(self) -> None:
+        stats = fight_stats([], ROUNDS, 2, [REPLAY, CROWD])
+        assert stats["fight_time_s"] == 360.0
+        assert stats["rounds"][0]["time_s"] == 180.0
 
 
 class TestFightStats:

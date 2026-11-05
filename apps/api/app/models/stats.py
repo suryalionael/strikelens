@@ -56,4 +56,5 @@ class FightStats(BaseModel):
     rounds: list[RoundInfo]
     fighters: Fighters
     uncounted_tags: int
+    segment_tags: int
     provisional_rules: list[str]

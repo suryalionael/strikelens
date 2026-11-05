@@ -21,6 +21,15 @@ export interface Round {
   end_ms: number
 }
 
+export type SegmentKind = 'replay' | 'non_fight'
+
+/** Video that is not live fight action. `end_ms` is exclusive. */
+export interface Segment {
+  kind: SegmentKind
+  start_ms: number
+  end_ms: number
+}
+
 export interface FightResult {
   winner: 'red' | 'blue' | 'draw' | 'no_contest' | null
   method: string | null
@@ -37,6 +46,7 @@ export interface Fight {
   scheduled_rounds: number
   video_file: string | null
   rounds: Round[]
+  segments: Segment[]
   result: FightResult | null
 }
 
@@ -108,5 +118,7 @@ export interface FightStats {
   rounds: RoundInfo[]
   fighters: Record<Corner, FighterStats>
   uncounted_tags: number
+  /** Confirmed tags inside a replay or non-fight segment, so not counted. */
+  segment_tags: number
   provisional_rules: string[]
 }

@@ -164,3 +164,51 @@ def test_fight_rejects_invalid_rounds(
     response = client.put(f"/fights/{fight['id']}", json=body)
     assert response.status_code == 422
     assert message in response.text
+
+
+def _segment(kind: str, start_ms: int, end_ms: int) -> dict[str, Any]:
+    return {"kind": kind, "start_ms": start_ms, "end_ms": end_ms}
+
+
+def test_fight_without_segments_has_an_empty_list(client: TestClient) -> None:
+    assert make_fight(client)["segments"] == []
+
+
+def test_replace_fight_saves_segments(client: TestClient) -> None:
+    fight = make_fight(client, rounds=_rounds((0, 180_000)))
+    segments = [_segment("replay", 60_000, 70_000), _segment("non_fight", 180_000, 200_000)]
+    body = {k: v for k, v in fight.items() if k != "id"} | {"segments": segments}
+    response = client.put(f"/fights/{fight['id']}", json=body)
+    assert response.status_code == 200, response.text
+    assert client.get(f"/fights/{fight['id']}").json()["segments"] == segments
+
+
+@pytest.mark.parametrize(
+    ("segments", "message"),
+    [
+        ([_segment("replay", 100, 50)], "segment at 100 ms ends before it starts"),
+        ([_segment("replay", 100, 100)], "segment at 100 ms ends before it starts"),
+        (
+            [_segment("replay", 0, 100), _segment("non_fight", 90, 200)],
+            "segment at 90 ms overlaps the one before it",
+        ),
+        (
+            [_segment("replay", 500, 600), _segment("replay", 0, 100)],
+            "segment at 0 ms overlaps the one before it",
+        ),
+    ],
+    ids=["end-before-start", "zero-length", "overlap", "out-of-order"],
+)
+def test_fight_rejects_invalid_segments(
+    client: TestClient, segments: list[dict[str, Any]], message: str
+) -> None:
+    fight = make_fight(client)
+    body = {k: v for k, v in fight.items() if k != "id"} | {"segments": segments}
+    response = client.put(f"/fights/{fight['id']}", json=body)
+    assert response.status_code == 422
+    assert message in response.text
+
+
+def test_back_to_back_segments_are_allowed(client: TestClient) -> None:
+    segments = [_segment("replay", 0, 100), _segment("non_fight", 100, 200)]
+    assert make_fight(client, segments=segments)["segments"] == segments

@@ -1,0 +1,10 @@
+# Settings for replay suggestions (`strikelens-cv suggest`, also run by ingest).
+# Suggestions are only hints: the analyst accepts or dismisses each in the tagger.
+
+# A shot shorter than this counts as short. Live fight coverage tends to hold a
+# wide shot for many seconds; replays cut quickly between angles of one moment.
+short_shot_ms = 2500
+
+# How many short shots in a row make a likely replay. One or two quick cuts happen
+# in live coverage too, so a single short shot is not enough.
+min_run = 3

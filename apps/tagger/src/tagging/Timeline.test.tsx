@@ -102,6 +102,24 @@ describe('Timeline', () => {
     expect(left(r2)).toBeGreaterThan(left(r1) + Number.parseFloat(r1.style.width))
   })
 
+  it('draws replays and non-fight segments as labelled bands', () => {
+    render(
+      <PlayerContext value={fakePlayer()}>
+        <Timeline
+          tags={TAGS}
+          rounds={ROUNDS}
+          segments={[
+            { kind: 'replay', start_ms: 40_000, end_ms: 45_000 },
+            { kind: 'non_fight', start_ms: 100_000, end_ms: 150_000 },
+          ]}
+        />
+      </PlayerContext>,
+    )
+    expect(screen.getByRole('img', { name: 'Replay 00:40.000 to 00:45.000' })).toBeInTheDocument()
+    expect(screen.getByTestId('segment-band-non_fight')).toBeInTheDocument()
+    expect(screen.getByText('non-fight')).toBeInTheDocument()
+  })
+
   it('labels an open round', () => {
     renderTimeline(fakePlayer({ currentTime: 300 }), TAGS, [
       ...ROUNDS,

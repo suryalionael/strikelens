@@ -11,6 +11,7 @@ const FIGHT = {
   red_fighter_id: 'red-1',
   blue_fighter_id: 'blue-1',
   rounds: [],
+  segments: [],
 } as unknown as Fight
 
 const fighter = (id: string, name: string): Fighter => ({
@@ -78,6 +79,16 @@ describe('StatsPanel', () => {
     render(<StatsPanel fight={FIGHT} refreshKey={0} />)
     expect(
       await screen.findByText('2 confirmed tags are outside every marked round and not counted.'),
+    ).toBeInTheDocument()
+  })
+
+  it('warns about confirmed tags inside segments', async () => {
+    vi.mocked(api.getStats).mockResolvedValue(sampleStats({ segment_tags: 1 }))
+    render(<StatsPanel fight={FIGHT} refreshKey={0} />)
+    expect(
+      await screen.findByText(
+        '1 confirmed tag is inside a replay or non-fight segment and not counted.',
+      ),
     ).toBeInTheDocument()
   })
 

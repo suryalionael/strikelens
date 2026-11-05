@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Fight } from './api/types'
 import { FightSetup } from './fight/FightSetup'
 import type { RoundDraft } from './fight/rounds'
+import type { SegmentDraft } from './fight/segments'
 import { PlayerProvider } from './player/PlayerProvider'
 import { VideoPlayer } from './player/VideoPlayer'
 import { StatsPanel } from './stats/StatsPanel'
@@ -11,12 +12,14 @@ function App() {
   const [fight, setFight] = useState<Fight | null>(null)
   // Round marks live here, not in the round marker, so tagging can see an open round.
   const [rounds, setRounds] = useState<RoundDraft[]>([])
+  const [segments, setSegments] = useState<SegmentDraft[]>([])
   // Goes up on every tag change (create, edit, delete, undo), so the stats refetch.
   const [savedTags, setSavedTags] = useState(0)
 
   const openFight = (opened: Fight | null) => {
     setFight(opened)
     setRounds(opened?.rounds ?? [])
+    setSegments(opened?.segments ?? [])
   }
 
   return (
@@ -30,6 +33,7 @@ function App() {
               key={fight?.id ?? 'none'}
               fight={fight}
               rounds={rounds}
+              segments={segments}
               onTagsChanged={() => setSavedTags((n) => n + 1)}
             />
             <StatsPanel key={`stats-${fight?.id ?? 'none'}`} fight={fight} refreshKey={savedTags} />
@@ -38,9 +42,11 @@ function App() {
             <FightSetup
               fight={fight}
               rounds={rounds}
+              segments={segments}
               onFightOpen={openFight}
               onFightSaved={setFight}
               onRoundsChange={setRounds}
+              onSegmentsChange={setSegments}
             />
           </aside>
         </div>

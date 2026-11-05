@@ -7,6 +7,7 @@ import type { Player } from '../player/usePlayerState'
 import { fakePlayer } from '../test/fakePlayer'
 import { FightSetup } from './FightSetup'
 import type { RoundDraft } from './rounds'
+import type { SegmentDraft } from './segments'
 
 const RED: Fighter = { id: 'red-1', name: 'Red Fighter', nickname: null, gym: null, country: null }
 
@@ -33,17 +34,21 @@ afterEach(() => {
 function Harness({ player, initial = null }: { player: Player; initial?: Fight | null }) {
   const [fight, setFight] = useState<Fight | null>(initial)
   const [rounds, setRounds] = useState<RoundDraft[]>(initial?.rounds ?? [])
+  const [segments, setSegments] = useState<SegmentDraft[]>(initial?.segments ?? [])
   return (
     <PlayerContext value={player}>
       <FightSetup
         fight={fight}
         rounds={rounds}
+        segments={segments}
         onFightOpen={(opened) => {
           setFight(opened)
           setRounds(opened?.rounds ?? [])
+          setSegments(opened?.segments ?? [])
         }}
         onFightSaved={setFight}
         onRoundsChange={setRounds}
+        onSegmentsChange={setSegments}
       />
     </PlayerContext>
   )
@@ -68,6 +73,7 @@ const savedFight = (rounds: Fight['rounds'] = [], scheduled_rounds = 3): Fight =
   scheduled_rounds,
   video_file: 'fight.mp4',
   rounds,
+  segments: [],
   result: null,
 })
 
@@ -104,6 +110,7 @@ describe('FightSetup: new fight', () => {
       blue_fighter_id: 'blue-1',
       video_file: 'fight.mp4',
       rounds: [],
+      segments: [],
       result: null,
     })
     expect(screen.getByText('Blue Fighter')).toBeInTheDocument()
@@ -224,6 +231,34 @@ describe('FightSetup: marking rounds', () => {
   it('says when no rounds are marked yet', () => {
     renderSetup(fakePlayer(), savedFight())
     expect(screen.getByText('No rounds marked yet.')).toBeInTheDocument()
+  })
+
+  it('keeps a segment when a round is saved while the segment save is in flight', async () => {
+    let finishFirst: (fight: Fight) => void = () => undefined
+    vi.mocked(api.replaceFight)
+      .mockImplementationOnce(
+        (_id, input) =>
+          new Promise((resolve) => {
+            finishFirst = resolve
+            void input
+          }),
+      )
+      .mockImplementation((id, input) => Promise.resolve(fightFrom(input, id)))
+    const { setTime } = renderSetup(fakePlayer({ currentTime: 1 }), savedFight())
+
+    fireEvent.click(screen.getByRole('button', { name: 'Start replay at 00:01.000' }))
+    setTime(5)
+    fireEvent.click(screen.getByRole('button', { name: 'End replay at 00:05.000' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Start round 1 at 00:05.000' }))
+    setTime(185)
+    fireEvent.click(screen.getByRole('button', { name: 'End round 1 at 03:05.000' }))
+
+    await waitFor(() => expect(api.replaceFight).toHaveBeenCalledTimes(2))
+    expect(vi.mocked(api.replaceFight).mock.lastCall?.[1]).toMatchObject({
+      rounds: [{ number: 1, start_ms: 5000, end_ms: 185000 }],
+      segments: [{ kind: 'replay', start_ms: 1000, end_ms: 5000 }],
+    })
+    finishFirst(savedFight())
   })
 
   it('needs a video before rounds can be marked', () => {

@@ -18,11 +18,12 @@ TAG_FIELDS = ("fighter", "round", "timestamp_ms", "weapon", "outcome", "target",
 
 @router.get("")
 def get_fight_stats(fight_id: uuid.UUID, session: SessionDep) -> FightStats:
-    """Every v1 stat for both fighters, from confirmed tags inside marked rounds."""
+    """Every v1 stat for both fighters, from confirmed tags inside marked rounds and
+    outside segments."""
     fight = get_or_404(session, FightRow, fight_id, "fight")
     rows = session.scalars(select(TagRow).where(TagRow.fight_id == fight_id))
     tags = [{field: getattr(row, field) for field in TAG_FIELDS} for row in rows]
-    stats = core.fight_stats(tags, fight.rounds, fight.scheduled_rounds)
+    stats = core.fight_stats(tags, fight.rounds, fight.scheduled_rounds, fight.segments)
     return FightStats.model_validate(
         {**stats, "fight_id": fight_id, "provisional_rules": list(core.PROVISIONAL_RULES)}
     )

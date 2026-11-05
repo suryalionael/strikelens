@@ -75,3 +75,20 @@ def test_stats_for_a_fight_with_no_tags_or_rounds(client: TestClient) -> None:
 
 def test_stats_for_unknown_fight_is_404(client: TestClient) -> None:
     assert client.get("/fights/9b2e7c10-1d3f-4b6a-8c9d-0e1f2a3b4c5d/stats").status_code == 404
+
+
+def test_stats_leave_out_tags_in_segments(client: TestClient) -> None:
+    fight_id = _fight_with_tags(
+        client,
+        [{**HUMAN, "timestamp_ms": 10_000}, {**HUMAN, "timestamp_ms": 65_000}],
+    )
+    fight = client.get(f"/fights/{fight_id}").json()
+    segments = [{"kind": "replay", "start_ms": 60_000, "end_ms": 70_000}]
+    body = {k: v for k, v in fight.items() if k != "id"} | {"segments": segments}
+    assert client.put(f"/fights/{fight_id}", json=body).status_code == 200
+
+    stats = client.get(f"/fights/{fight_id}/stats").json()
+    assert stats["segment_tags"] == 1
+    assert stats["uncounted_tags"] == 0
+    assert stats["fighters"]["red"]["totals"]["attempts"] == 1
+    assert stats["fight_time_s"] == 240.0

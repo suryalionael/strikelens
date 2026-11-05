@@ -41,7 +41,13 @@ round, and its `timestamp_ms` must fall between that round's start and end marks
 round mark was moved, are not counted. `GET /fights/{id}/stats` reports how many
 there are as `uncounted_tags`, so the tagger can warn about them.
 
-All of this is `fight_stats(tags, rounds, scheduled_rounds)` in `core.py`, served
+A confirmed tag inside a **replay or non-fight segment** is not counted either
+(provisional, see [Replays and non-fight segments](#replays-and-non-fight-segments)).
+A replay repeats strikes that were already tagged live, so counting both would
+count each strike twice. The stats response reports these as `segment_tags`. A tag
+is in at most one of the two counts: inside a segment wins over outside a round.
+
+All of this is `fight_stats(tags, rounds, scheduled_rounds, segments)` in `core.py`, served
 by `GET /fights/{id}/stats`. The response also lists the provisional rules below,
 so the stat cards can flag them.
 
@@ -69,13 +75,38 @@ Edge cases:
 - **Pauses inside a round** (referee break, doctor check, foul): provisional rule is
   to include them, because v1 only marks round start and end. Open question for
   Freefly. If they exclude pauses, the tagger needs pause marks.
-- **Replays and non-fight segments** inside a round: excluded from tagging. Whether
-  they need to be subtracted from round time depends on whether the broadcast cuts
-  them in live or after the round. Revisit in issue #18.
+- **Replays and non-fight segments** inside a round: tags inside them are not
+  counted, but the segments still count as round time (provisional). See below.
 - **Round with end before start or overlapping rounds:** invalid input; the API
   rejects it.
 
 Implemented: `round_time_s(round)` and `fight_time_s(rounds)` in `core.py`.
+
+### Replays and non-fight segments
+
+The analyst marks segments of the video that are not live fight action (issue #18):
+
+- `replay`: the broadcast shows earlier action again, often in slow motion.
+- `non_fight`: a shot with no fight action, such as the crowd or a corner.
+
+Each has `start_ms` and an exclusive `end_ms` on the fight (`segments` in
+`fight.schema.json`). A tag at exactly `end_ms` is the first moment back on live
+action, so it is outside the segment.
+
+Provisional rules (open question 12):
+
+- **Tags inside a segment are not counted.** During a replay the analyst sees old
+  strikes again; they were tagged when they happened live.
+- **Segments do not shorten round time.** Round time comes from the round marks.
+  When a live broadcast cuts to a replay mid-round, the fight clock keeps running
+  and the fighters keep fighting, so the time is real fight time. Subtracting it
+  would only be right if the replay was edited into the video while the clock was
+  stopped, which a live broadcast does not do. The cost of this rule: strikes
+  thrown while the broadcast showed a replay are never seen, so counts for that
+  round are a little low. The tagger cannot see them either way.
+
+Implemented: `in_segment(tag, segments)` and `counted_tags(tags, rounds, segments)`
+in `core.py`.
 
 ## Attempts
 
@@ -232,3 +263,6 @@ Further questions raised while writing these definitions:
    knee, elbow (for example backfist, spinning strikes, sweeps)? Does Byon allow elbows?
 10. Do you track defensive actions (blocks, checks, slips, clinches)? If so, which?
 11. Do clinch strikes (knees in the clinch) count the same as strikes at range?
+12. When the broadcast shows a replay during a round, do you subtract that time from
+    fight time? How do you handle strikes thrown while the replay was on screen, which
+    nobody watching the broadcast can see?

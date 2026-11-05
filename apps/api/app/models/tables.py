@@ -33,9 +33,10 @@ class FightRow(Base):
     weight_class: Mapped[str | None] = mapped_column(String)
     scheduled_rounds: Mapped[int] = mapped_column(Integer)
     video_file: Mapped[str | None] = mapped_column(String)
-    # Rounds and result are always read and written with their fight, so they are
-    # stored as JSON instead of separate tables.
+    # Rounds, segments, and result are always read and written with their fight, so
+    # they are stored as JSON instead of separate tables.
     rounds: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
+    segments: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
     result: Mapped[dict[str, Any] | None] = mapped_column(JSON)
 
 
