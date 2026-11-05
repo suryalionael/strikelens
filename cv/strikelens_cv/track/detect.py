@@ -10,6 +10,7 @@ from typing import Any
 
 from strikelens_cv.track.assign import Detection, FrameInfo
 from strikelens_cv.track.config import TrackConfig
+from strikelens_cv.track.referee import torso_box, torso_skin_share
 
 PERSON_CLASS = 0
 HUE_BINS = 8
@@ -36,6 +37,26 @@ def _feature(image: Any, box: Sequence[float]) -> list[float]:
     hist = cv2.calcHist([hsv], [0, 1], None, [HUE_BINS, SAT_BINS], [0, 180, 0, 256]).flatten()
     total = float(hist.sum())
     return [float(v) / total for v in hist] if total > 0 else [0.0] * len(hist)
+
+
+TORSO_SAMPLE = 16  # the chest is shrunk to 16 x 16 pixels before judging skin
+
+
+def _torso_skin(image: Any, box: Sequence[float], config: TrackConfig) -> float | None:
+    """Share of skin on the chest, from a small sample of its pixels."""
+    import cv2
+
+    height, width = image.shape[:2]
+    x1, y1, x2, y2 = torso_box(box)
+    x1, x2 = (min(max(round(v), 0), width) for v in (x1, x2))
+    y1, y2 = (min(max(round(v), 0), height) for v in (y1, y2))
+    crop = image[y1:y2, x1:x2]
+    if crop.size == 0:
+        return None
+    sample = cv2.resize(crop, (TORSO_SAMPLE, TORSO_SAMPLE), interpolation=cv2.INTER_AREA)
+    pixels = [tuple(int(c) for c in px) for row in sample.tolist() for px in row]
+    share = torso_skin_share(pixels, config)  # type: ignore[arg-type]
+    return None if share is None else round(share, 3)
 
 
 def detect(
@@ -87,6 +108,7 @@ def detect(
                     "box": [round(float(v), 1) for v in xyxy],
                     "confidence": round(float(conf), 3),
                     "feature": [round(v, 4) for v in _feature(image, xyxy)],
+                    "torso_skin": _torso_skin(image, xyxy, config),
                 }
             )
     return detections
