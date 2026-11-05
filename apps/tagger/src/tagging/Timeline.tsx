@@ -1,12 +1,14 @@
 import { memo, type MouseEvent } from 'react'
-import type { Corner, Tag } from '../api/types'
+import type { Corner, SegmentKind, Tag } from '../api/types'
 import type { RoundDraft } from '../fight/rounds'
+import type { SegmentDraft } from '../fight/segments'
 import { usePlayer } from '../player/PlayerContext'
 import { CORNER_COLOR, CORNER_NAME } from '../stats/colors'
 import {
   markers as buildMarkers,
   position,
   roundBands,
+  segmentBands,
   timeAt,
   timelineRange,
   type Marker,
@@ -15,10 +17,19 @@ import {
 
 const CORNERS: Corner[] = ['red', 'blue']
 const LANE = 'relative h-6'
+const NO_SEGMENTS: readonly SegmentDraft[] = []
+
+/** Hatching, not colour, so segments read the same for every viewer. */
+const SEGMENT_FILL: Record<SegmentKind, string> = {
+  replay: 'repeating-linear-gradient(45deg, #a3a3a333 0 3px, transparent 3px 7px)',
+  non_fight: 'repeating-linear-gradient(-45deg, #a3a3a326 0 2px, transparent 2px 9px)',
+}
 
 interface Props {
   tags: readonly Tag[]
   rounds: readonly RoundDraft[]
+  /** Replays and non-fight segments, drawn as hatched bands. */
+  segments?: readonly SegmentDraft[]
   selectedId?: string | null
   /** Must be stable (for example a state setter), or markers redraw every frame. */
   onSelect?: (id: string) => void
@@ -100,7 +111,13 @@ const MarkerLayer = memo(function MarkerLayer({
   )
 })
 
-export function Timeline({ tags, rounds, selectedId = null, onSelect }: Props) {
+export function Timeline({
+  tags,
+  rounds,
+  segments = NO_SEGMENTS,
+  selectedId = null,
+  onSelect,
+}: Props) {
   const { currentTime, duration, seek } = usePlayer()
   const now_ms = Math.round(currentTime * 1000)
   const lastTag_ms = tags.reduce((max, t) => Math.max(max, t.timestamp_ms), 0)
@@ -109,6 +126,7 @@ export function Timeline({ tags, rounds, selectedId = null, onSelect }: Props) {
   const latest_ms = hasOpenRound ? Math.max(now_ms, lastTag_ms) : lastTag_ms
   const range = timelineRange(rounds, Math.round(duration * 1000), latest_ms)
   const bands = roundBands(rounds, range, latest_ms)
+  const hatches = segmentBands(segments, range, now_ms)
 
   const onTrackClick = (event: MouseEvent<HTMLDivElement>) => {
     const box = event.currentTarget.getBoundingClientRect()
@@ -137,6 +155,17 @@ export function Timeline({ tags, rounds, selectedId = null, onSelect }: Props) {
               {outcome}
             </span>
           ))}
+          {segments.length > 0 &&
+            (['replay', 'non_fight'] as const).map((kind) => (
+              <span key={kind} className="flex items-center gap-1">
+                <span
+                  aria-hidden
+                  className="inline-block h-2.5 w-4 rounded-[1px] border border-neutral-600"
+                  style={{ backgroundImage: SEGMENT_FILL[kind] }}
+                />
+                {kind === 'replay' ? 'replay' : 'non-fight'}
+              </span>
+            ))}
         </span>
       </div>
 
@@ -176,6 +205,23 @@ export function Timeline({ tags, rounds, selectedId = null, onSelect }: Props) {
                 band.open ? 'border-r border-dashed border-neutral-500' : ''
               }`}
               style={{ left: `${band.left}%`, width: `${band.width}%` }}
+            />
+          ))}
+          {hatches.map((band) => (
+            <div
+              key={`${band.kind}-${band.left}`}
+              role="img"
+              aria-label={band.label}
+              title={band.label}
+              data-testid={`segment-band-${band.kind}`}
+              className={`pointer-events-none absolute top-4 bottom-0 border-x border-neutral-600 ${
+                band.open ? 'border-r-0' : ''
+              }`}
+              style={{
+                left: `${band.left}%`,
+                width: `${band.width}%`,
+                backgroundImage: SEGMENT_FILL[band.kind],
+              }}
             />
           ))}
           {CORNERS.map((corner) => (

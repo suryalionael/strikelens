@@ -3,21 +3,33 @@ import { api } from '../api/client'
 import type { Fight, Fighter } from '../api/types'
 import { usePlayer } from '../player/PlayerContext'
 import { FightForm } from './FightForm'
-import type { RoundDraft } from './rounds'
+import { completedRounds, roundErrors, type RoundDraft } from './rounds'
 import { RoundMarker } from './RoundMarker'
+import { SegmentMarker } from './SegmentMarker'
+import { completedSegments, segmentErrors, type SegmentDraft } from './segments'
 import { button, input, label } from './styles'
 
 interface Props {
   fight: Fight | null
   rounds: RoundDraft[]
+  segments: SegmentDraft[]
   /** A different fight was opened, created, or closed (null). */
   onFightOpen: (fight: Fight | null) => void
-  /** The open fight was saved with new rounds. */
+  /** The open fight was saved with new rounds or segments. */
   onFightSaved: (fight: Fight) => void
   onRoundsChange: (rounds: RoundDraft[]) => void
+  onSegmentsChange: (segments: SegmentDraft[]) => void
 }
 
-export function FightSetup({ fight, rounds, onFightOpen, onFightSaved, onRoundsChange }: Props) {
+export function FightSetup({
+  fight,
+  rounds,
+  segments,
+  onFightOpen,
+  onFightSaved,
+  onRoundsChange,
+  onSegmentsChange,
+}: Props) {
   const { fileName } = usePlayer()
   const [fighters, setFighters] = useState<Fighter[]>([])
   const [fights, setFights] = useState<Fight[]>([])
@@ -44,7 +56,20 @@ export function FightSetup({ fight, rounds, onFightOpen, onFightSaved, onRoundsC
   const remember = (saved: Fight) =>
     setFights((list) => [saved, ...list.filter((f) => f.id !== saved.id)])
 
+  const handleSaved = (saved: Fight) => {
+    remember(saved)
+    onFightSaved(saved)
+  }
+
   if (fight) {
+    // Each marker saves the whole fight, so it sends the other marker's latest valid
+    // marks too. Otherwise a round save in flight could undo a segment save.
+    const roundsToKeep =
+      roundErrors(rounds, fight.scheduled_rounds).length > 0
+        ? fight.rounds
+        : completedRounds(rounds)
+    const segmentsToKeep =
+      segmentErrors(segments).length > 0 ? fight.segments : completedSegments(segments)
     return (
       <div className="flex flex-col gap-4">
         <header className="flex items-start justify-between gap-2">
@@ -73,11 +98,17 @@ export function FightSetup({ fight, rounds, onFightOpen, onFightSaved, onRoundsC
           key={fight.id}
           fight={fight}
           rounds={rounds}
+          segments={segmentsToKeep}
           onRoundsChange={onRoundsChange}
-          onSaved={(saved) => {
-            remember(saved)
-            onFightSaved(saved)
-          }}
+          onSaved={handleSaved}
+        />
+        <SegmentMarker
+          key={`segments-${fight.id}`}
+          fight={fight}
+          segments={segments}
+          rounds={roundsToKeep}
+          onSegmentsChange={onSegmentsChange}
+          onSaved={handleSaved}
         />
       </div>
     )

@@ -1,5 +1,6 @@
-import type { Corner, Outcome, Tag } from '../api/types'
+import type { Corner, Outcome, SegmentKind, Tag } from '../api/types'
 import type { RoundDraft } from '../fight/rounds'
+import { SEGMENT_LABEL, type SegmentDraft } from '../fight/segments'
 import { formatTime } from '../player/time'
 
 export interface TimeRange {
@@ -59,6 +60,32 @@ export function roundBands(
     const end = r.end_ms ?? Math.max(r.start_ms, latest_ms)
     const left = position(r.start_ms, range)
     return { number: r.number, left, width: position(end, range) - left, open: r.end_ms === null }
+  })
+}
+
+export interface SegmentBand {
+  kind: SegmentKind
+  left: number
+  width: number
+  open: boolean
+  label: string
+}
+
+/** Replay and non-fight bands. An open segment runs to `latest_ms`. Off-range ones are dropped. */
+export function segmentBands(
+  segments: readonly SegmentDraft[],
+  range: TimeRange,
+  latest_ms: number,
+): SegmentBand[] {
+  return segments.flatMap((s) => {
+    const end = s.end_ms ?? Math.max(s.start_ms, latest_ms)
+    const left = position(s.start_ms, range)
+    const width = position(end, range) - left
+    const open = s.end_ms === null
+    if (width <= 0 && !open) return []
+    const until = s.end_ms === null ? 'open' : formatTime(s.end_ms / 1000)
+    const label = `${SEGMENT_LABEL[s.kind]} ${formatTime(s.start_ms / 1000)} to ${until}`
+    return [{ kind: s.kind, left, width, open, label }]
   })
 }
 

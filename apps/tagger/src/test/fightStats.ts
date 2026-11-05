@@ -68,6 +68,7 @@ export function sampleStats(overrides: Partial<FightStats> = {}): FightStats {
       }),
     },
     uncounted_tags: 0,
+    segment_tags: 0,
     provisional_rules: ['Every strike in a combination is its own attempt.'],
     ...overrides,
   }

@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { api } from '../api/client'
 import type { Corner, Fight, Tag } from '../api/types'
 import type { RoundDraft } from '../fight/rounds'
+import { SEGMENT_LABEL, segmentAt, type SegmentDraft } from '../fight/segments'
 import { usePlayer } from '../player/PlayerContext'
 import { formatTime } from '../player/time'
 import { isFormControl } from '../player/keys'
@@ -25,6 +26,8 @@ type Message = { kind: 'info' | 'error'; text: string }
 interface Props {
   fight: Fight | null
   rounds: RoundDraft[]
+  /** Replays and non-fight segments. Tags inside them are flagged as not counted. */
+  segments?: readonly SegmentDraft[]
   /** Called after any tag is created, changed, deleted, or undone, so stats refresh. */
   onTagsChanged?: () => void
 }
@@ -70,7 +73,15 @@ function isUndoKey(event: KeyboardEvent): boolean {
 }
 
 /** Mount with `key={fight id}` so a new fight starts with a clean draft and tag list. */
-export function TagPanel({ fight, rounds, onTagsChanged }: Props) {
+const NO_SEGMENTS: readonly SegmentDraft[] = []
+
+/** "replay" or "non-fight" when the time is inside a segment, for flagging tags. */
+function segmentNote(segments: readonly SegmentDraft[], ms: number): string | null {
+  const segment = segmentAt(segments, ms)
+  return segment ? SEGMENT_LABEL[segment.kind].toLowerCase() : null
+}
+
+export function TagPanel({ fight, rounds, segments = NO_SEGMENTS, onTagsChanged }: Props) {
   const { src, videoRef } = usePlayer()
   const [tagging, setTagging] = useState<TaggingState>(INITIAL_TAGGING)
   // Handlers read the latest state from here, so two quick keys never see a stale render.
@@ -295,7 +306,13 @@ export function TagPanel({ fight, rounds, onTagsChanged }: Props) {
       )}
 
       {ready && (
-        <Timeline tags={tags} rounds={rounds} selectedId={selectedId} onSelect={setSelectedId} />
+        <Timeline
+          tags={tags}
+          rounds={rounds}
+          segments={segments}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+        />
       )}
 
       {ready && selected && (
@@ -401,6 +418,12 @@ export function TagPanel({ fight, rounds, onTagsChanged }: Props) {
             {formatTime(confirmed.timestamp_ms / 1000)}, round {confirmed.round}
           </span>
         )}
+        {confirmed && segmentNote(segments, confirmed.timestamp_ms) && (
+          <span className="ml-2 text-amber-400">
+            This tag is inside a {segmentNote(segments, confirmed.timestamp_ms)} and will not be
+            counted.
+          </span>
+        )}
         {message && (
           <span className={message.kind === 'error' ? 'text-red-400' : 'text-neutral-400'}>
             {message.text}
@@ -432,7 +455,17 @@ export function TagPanel({ fight, rounds, onTagsChanged }: Props) {
                 <td className="font-mono tabular-nums">{formatTime(tag.timestamp_ms / 1000)}</td>
                 <td>{tag.round}</td>
                 <td className={CORNER_TEXT[tag.fighter]}>{CORNER_LABEL[tag.fighter]}</td>
-                <td>{[tag.weapon, tag.outcome, tag.target].join(' · ')}</td>
+                <td>
+                  {[tag.weapon, tag.outcome, tag.target].join(' · ')}
+                  {segmentNote(segments, tag.timestamp_ms) && (
+                    <span
+                      className="ml-2 rounded border border-amber-700 px-1 text-[10px] text-amber-300"
+                      title="Inside a marked segment, so not counted"
+                    >
+                      in {segmentNote(segments, tag.timestamp_ms)}
+                    </span>
+                  )}
+                </td>
                 <td className="text-right">
                   <button
                     type="button"

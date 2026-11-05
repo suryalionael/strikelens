@@ -1,6 +1,13 @@
 import type { Tag } from '../api/types'
 import type { RoundDraft } from '../fight/rounds'
-import { markers, position, roundBands, timeAt, timelineRange } from './timelineLayout'
+import {
+  markers,
+  position,
+  roundBands,
+  segmentBands,
+  timeAt,
+  timelineRange,
+} from './timelineLayout'
 
 const ROUNDS: RoundDraft[] = [
   { number: 1, start_ms: 100_000, end_ms: 280_000 },
@@ -84,6 +91,31 @@ describe('roundBands', () => {
       50,
     )
     expect(bands[0]).toEqual({ number: 1, left: 0, width: 50, open: true })
+  })
+})
+
+describe('segmentBands', () => {
+  const range = { start_ms: 0, end_ms: 100_000 }
+
+  it('places a finished segment with a label', () => {
+    const bands = segmentBands([{ kind: 'replay', start_ms: 10_000, end_ms: 20_000 }], range, 0)
+    expect(bands).toEqual([
+      { kind: 'replay', left: 10, width: 10, open: false, label: 'Replay 00:10.000 to 00:20.000' },
+    ])
+  })
+
+  it('runs an open segment to the latest time', () => {
+    const bands = segmentBands(
+      [{ kind: 'non_fight', start_ms: 10_000, end_ms: null }],
+      range,
+      30_000,
+    )
+    expect(bands[0]).toMatchObject({ width: 20, open: true, label: 'Non-fight 00:10.000 to open' })
+  })
+
+  it('drops a segment outside the range', () => {
+    const before = { kind: 'replay' as const, start_ms: 0, end_ms: 5_000 }
+    expect(segmentBands([before], { start_ms: 10_000, end_ms: 20_000 }, 0)).toEqual([])
   })
 })
 

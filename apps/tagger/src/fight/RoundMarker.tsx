@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { api, fightInput } from '../api/client'
-import type { Fight } from '../api/types'
+import type { Fight, Segment } from '../api/types'
 import { usePlayer } from '../player/PlayerContext'
 import { formatTime } from '../player/time'
 import {
@@ -22,15 +22,20 @@ interface Props {
   fight: Fight
   /** Round marks, including an open round. Owned by the app so tagging can read them. */
   rounds: RoundDraft[]
+  /** The segments to save alongside, so a round save never undoes a segment save. */
+  segments: Segment[]
   onRoundsChange: (rounds: RoundDraft[]) => void
   onSaved: (fight: Fight) => void
 }
 
-export function RoundMarker({ fight, rounds, onRoundsChange, onSaved }: Props) {
+export function RoundMarker({ fight, rounds, segments, onRoundsChange, onSaved }: Props) {
   const { currentTime, src, seek } = usePlayer()
   const [save, setSave] = useState<SaveState>({ kind: 'saved' })
   // Only the newest save may update the status, in case responses arrive out of order.
   const latestSave = useRef(0)
+  // What was last sent, not what was last saved, so a change made while a save is
+  // in flight (for example undoing it) is still sent.
+  const lastSent = useRef<string | null>(JSON.stringify(fight.rounds))
 
   const nowMs = Math.round(currentTime * 1000)
   const errors = roundErrors(rounds, fight.scheduled_rounds)
@@ -41,11 +46,12 @@ export function RoundMarker({ fight, rounds, onRoundsChange, onSaved }: Props) {
     onRoundsChange(next)
     if (roundErrors(next, fight.scheduled_rounds).length > 0) return
     const toSave = completedRounds(next)
-    if (JSON.stringify(toSave) === JSON.stringify(fight.rounds)) return
+    if (JSON.stringify(toSave) === lastSent.current) return
+    lastSent.current = JSON.stringify(toSave)
     const id = ++latestSave.current
     setSave({ kind: 'saving' })
     api
-      .replaceFight(fight.id, { ...fightInput(fight), rounds: toSave })
+      .replaceFight(fight.id, { ...fightInput(fight), rounds: toSave, segments })
       .then((saved) => {
         if (id !== latestSave.current) return
         setSave({ kind: 'saved' })
@@ -53,6 +59,7 @@ export function RoundMarker({ fight, rounds, onRoundsChange, onSaved }: Props) {
       })
       .catch((error: unknown) => {
         if (id !== latestSave.current) return
+        lastSent.current = null
         setSave({ kind: 'failed', message: error instanceof Error ? error.message : String(error) })
       })
   }

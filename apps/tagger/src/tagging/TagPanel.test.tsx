@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { api } from '../api/client'
 import type { Fight, Tag, TagInput } from '../api/types'
 import type { RoundDraft } from '../fight/rounds'
+import type { SegmentDraft } from '../fight/segments'
 import { PlayerContext } from '../player/PlayerContext'
 import { fakePlayer } from '../test/fakePlayer'
 import { CONFIRM_MS, TagPanel } from './TagPanel'
@@ -35,10 +36,11 @@ function renderPanel({
   fight = FIGHT as Fight | null,
   rounds = ROUNDS,
   src = 'blob:fight' as string | null,
+  segments = [] as SegmentDraft[],
 } = {}) {
   return render(
     <PlayerContext value={fakePlayer({ src, videoRef: { current: video } })}>
-      <TagPanel fight={fight} rounds={rounds} />
+      <TagPanel fight={fight} rounds={rounds} segments={segments} />
     </PlayerContext>,
   )
 }
@@ -154,6 +156,23 @@ describe('TagPanel', () => {
     expect(
       await screen.findByText('Not saved (Red kick landed body at 01:01.250, round 1): API down'),
     ).toBeInTheDocument()
+  })
+
+  it('flags a tag made inside a replay, but still saves it', async () => {
+    renderPanel({ segments: [{ kind: 'replay', start_ms: 60_000, end_ms: 65_000 }] })
+    keys('q', 'k', 'l', '2')
+    expect(
+      await screen.findByText('This tag is inside a replay and will not be counted.'),
+    ).toBeInTheDocument()
+    expect(api.createTag).toHaveBeenCalledTimes(1)
+    expect(screen.getByText('in replay')).toBeInTheDocument()
+  })
+
+  it('does not flag a tag outside every segment', async () => {
+    renderPanel({ segments: [{ kind: 'non_fight', start_ms: 0, end_ms: 61_250 }] })
+    keys('q', 'k', 'l', '2')
+    expect(await screen.findByText(/^Saved:/)).toBeInTheDocument()
+    expect(screen.queryByText(/in non-fight/)).not.toBeInTheDocument()
   })
 
   it('loads the fight’s existing tags, newest first', async () => {

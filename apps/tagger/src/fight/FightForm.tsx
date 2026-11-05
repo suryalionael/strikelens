@@ -47,6 +47,7 @@ export function FightForm({ fighters, videoFile, onFighterCreated, onCreated }: 
         blue_fighter_id: await resolveFighter('blue', blue),
         video_file: videoFile,
         rounds: [],
+        segments: [],
         result: null,
       })
       onCreated(fight)
