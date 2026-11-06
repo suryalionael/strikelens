@@ -13,10 +13,14 @@ inclusive, as in the API's stats.
 import json
 from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
-from typing import Any, Literal, TypedDict, TypeVar
+from typing import TYPE_CHECKING, Any, Literal, TypedDict, TypeVar
 
-from strikelens_cv.ingest.cuts import Shot
 from strikelens_cv.segments.config import SegmentConfig
+
+if TYPE_CHECKING:
+    # Only a type here. Importing ingest at run time would loop back to segments
+    # (ingest.run writes the replay suggestions).
+    from strikelens_cv.ingest.cuts import Shot
 
 SegmentKind = Literal["replay", "non_fight"]
 KINDS: tuple[SegmentKind, ...] = ("replay", "non_fight")
@@ -40,11 +44,11 @@ class Round(TypedDict):
     end_ms: int
 
 
-def _is_short(shot: Shot, config: SegmentConfig) -> bool:
+def _is_short(shot: "Shot", config: SegmentConfig) -> bool:
     return shot["end_ms"] - shot["start_ms"] < config.short_shot_ms
 
 
-def suggest_segments(shots: Sequence[Shot], config: SegmentConfig) -> list[Suggestion]:
+def suggest_segments(shots: Sequence["Shot"], config: SegmentConfig) -> list[Suggestion]:
     """Likely replays: runs of at least `min_run` short shots in a row.
 
     Live coverage holds a wide shot for a long time; a replay cuts quickly between
