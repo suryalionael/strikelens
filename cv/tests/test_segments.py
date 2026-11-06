@@ -10,9 +10,12 @@ from strikelens_cv.segments import (
     DEFAULT_SEGMENT_CONFIG,
     SegmentConfig,
     frames_outside,
+    in_round,
     in_segment,
+    load_rounds,
     load_segment_config,
     load_segments,
+    parse_rounds,
     parse_segments,
     suggest,
     suggest_segments,
@@ -126,6 +129,49 @@ class TestLoad:
         path = tmp_path / "fight.json"
         path.write_text(json.dumps({"id": "x", "segments": [REPLAY]}))
         assert load_segments(path) == [REPLAY]
+
+
+ROUND_1 = {"number": 1, "start_ms": 10_000, "end_ms": 190_000}
+ROUND_2 = {"number": 2, "start_ms": 250_000, "end_ms": 430_000}
+
+
+class TestRounds:
+    def test_end_is_inclusive(self) -> None:
+        rounds = parse_rounds({"rounds": [ROUND_1]})
+        assert not in_round(9_999, rounds)
+        assert in_round(10_000, rounds)
+        assert in_round(190_000, rounds)
+        assert not in_round(190_001, rounds)
+
+    def test_between_rounds_is_outside(self) -> None:
+        rounds = parse_rounds({"rounds": [ROUND_1, ROUND_2]})
+        assert not in_round(220_000, rounds)
+        assert in_round(300_000, rounds)
+
+    def test_fight_without_rounds(self) -> None:
+        assert parse_rounds({"segments": []}) == []
+
+    def test_sorted_by_start(self) -> None:
+        assert parse_rounds({"rounds": [ROUND_2, ROUND_1]}) == [ROUND_1, ROUND_2]
+
+    @pytest.mark.parametrize(
+        "bad",
+        [
+            {"rounds": "none"},
+            {"rounds": [{"start_ms": 0, "end_ms": 1}]},
+            {"rounds": [{"number": 1, "start_ms": 5, "end_ms": 5}]},
+            {"rounds": [{"number": 1, "start_ms": 0.5, "end_ms": 5}]},
+        ],
+        ids=["not-a-list", "no-number", "zero-length", "not-whole-ms"],
+    )
+    def test_rejects_bad_rounds(self, bad: dict[str, object]) -> None:
+        with pytest.raises(ValueError):
+            parse_rounds(bad)
+
+    def test_load_from_saved_fight(self, tmp_path: Path) -> None:
+        path = tmp_path / "fight.json"
+        path.write_text(json.dumps({"id": "x", "rounds": [ROUND_1], "segments": [REPLAY]}))
+        assert load_rounds(path) == [ROUND_1]
 
 
 class TestSuggestFromCuts:

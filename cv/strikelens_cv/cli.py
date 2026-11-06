@@ -8,8 +8,10 @@ from typing import TYPE_CHECKING
 
 from strikelens_cv import __version__
 from strikelens_cv.ingest.config import DEFAULT_CONFIG
+from strikelens_cv.overlay.config import DEFAULT_OVERLAY_CONFIG
 from strikelens_cv.pose.config import DEFAULT_POSE_CONFIG
 from strikelens_cv.segments.config import DEFAULT_SEGMENT_CONFIG
+from strikelens_cv.segments.core import in_round
 from strikelens_cv.track.config import DEFAULT_TRACK_CONFIG
 
 if TYPE_CHECKING:
@@ -96,6 +98,22 @@ def build_parser() -> argparse.ArgumentParser:
     )
     pose.add_argument("--fight", required=True, help="fight name used at ingest")
     pose.add_argument("--config", type=Path, default=DEFAULT_POSE_CONFIG, help="TOML settings file")
+
+    overlay = commands.add_parser(
+        "overlay",
+        help="render boxes, skeletons, and the strike timeline onto video",
+        description="Draw the red and blue boxes, skeletons, and a timeline of confirmed "
+        "tags onto the extracted frames, and write an MP4 to data/processed/<fight>/. "
+        "With --ids, draw every person with shot and track ID instead.",
+    )
+    overlay.add_argument("--fight", required=True, help="fight name used at ingest")
+    overlay.add_argument("--round", type=int, help="only this round (from fight.json)")
+    overlay.add_argument(
+        "--ids", action="store_true", help="label every person with shot and track ID"
+    )
+    overlay.add_argument(
+        "--config", type=Path, default=DEFAULT_OVERLAY_CONFIG, help="TOML settings file"
+    )
     return parser
 
 
@@ -139,11 +157,22 @@ def run_suggest(args: argparse.Namespace) -> int:
 def _report_tracks(result: "TrackResult") -> None:
     shots = result.assignment["shots"]
     uncertain = sum(1 for s in shots if s["uncertain"])
+    by_kit = sum(1 for s in shots if s["by_kit"])
     seen = sum(1 for f in result.frames if f["red"] or f["blue"])
     print(
         f"{seen} of {len(result.frames)} frames have a fighter, {len(shots)} shots, "
         f"{uncertain} uncertain. Written to {result.out_dir / 'tracks.json'}"
     )
+    print(f"{by_kit} of {len(shots)} shots decided by kit colour.")
+    if result.rounds:
+        inside = sum(1 for f in result.frames if in_round(f["timestamp_ms"], result.rounds))
+        count = len(result.rounds)
+        print(f"Tracked inside {count} {'round' if count == 1 else 'rounds'}: {inside} frames.")
+    else:
+        print(
+            "No rounds in fight.json: tracked the whole video. Mark the rounds in the "
+            "tagger and save the fight as fight.json."
+        )
     if result.assignment["seeded_by"] == "left_is_red":
         print("Red was guessed as the fighter on the left in the first shot. Check it.")
 
@@ -216,6 +245,31 @@ def run_pose(args: argparse.Namespace) -> int:
     return 0
 
 
+def run_overlay(args: argparse.Namespace) -> int:
+    from strikelens_cv.overlay import load_overlay_config, overlay
+
+    try:
+        result = overlay(args.fight, load_overlay_config(args.config), args.round, args.ids)
+    except (FileNotFoundError, RuntimeError, ValueError) as error:
+        print(f"strikelens-cv overlay: {error}", file=sys.stderr)
+        return 1
+    print(
+        f"{result.frames} frames and {result.tags} confirmed "
+        f"{'tag' if result.tags == 1 else 'tags'} written to {result.path}"
+    )
+    if not result.rounds:
+        print("No rounds in fight.json: rendered every frame that was tracked.")
+    if not args.ids and not result.keypoints:
+        print("No keypoints/ for this fight: boxes only. Run strikelens-cv pose for skeletons.")
+    if result.tags == 0:
+        print(
+            "No confirmed tags: the timeline is empty. Save them from the API as tags.json "
+            "(see cv/README.md, Overlay)."
+        )
+    print("Check docs/data-policy.md before sharing this video outside the team.")
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -231,6 +285,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return run_referee(args)
     if args.command == "pose":
         return run_pose(args)
+    if args.command == "overlay":
+        return run_overlay(args)
     parser.print_help()
     return 0
 

@@ -3,11 +3,13 @@
 import tomllib
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal, get_args
 
 from strikelens_cv.paths import CONFIG_DIR
 
 DEFAULT_TRACK_CONFIG = CONFIG_DIR / "track.toml"
+
+RefereeRule = Literal["dark", "skin"]
 
 
 @dataclass(frozen=True)
@@ -17,7 +19,13 @@ class TrackConfig:
     image_size: int = 640
     min_track_frames: int = 5
     max_feature_distance: float = 0.5
+    kit_corner: bool = True
+    min_kit_share: float = 0.3
+    kit_min_saturation: float = 0.4
     referee_filter: bool = True
+    referee_rule: RefereeRule = "dark"
+    min_torso_dark: float = 0.5
+    dark_max_value: int = 70
     min_torso_skin: float = 0.25
     skin_cr: tuple[int, int] = (133, 173)
     skin_cb: tuple[int, int] = (77, 127)
@@ -33,6 +41,16 @@ class TrackConfig:
             raise ValueError("min_track_frames must be at least 1")
         if not 0 < self.max_feature_distance <= 1:
             raise ValueError("max_feature_distance must be above 0 and at most 1")
+        if not 0 < self.min_kit_share <= 1:
+            raise ValueError("min_kit_share must be above 0 and at most 1")
+        if not 0 <= self.kit_min_saturation <= 1:
+            raise ValueError("kit_min_saturation must be between 0 and 1")
+        if self.referee_rule not in get_args(RefereeRule):
+            raise ValueError(f"referee_rule must be one of {', '.join(get_args(RefereeRule))}")
+        if not 0 <= self.min_torso_dark <= 1:
+            raise ValueError("min_torso_dark must be between 0 and 1")
+        if not 0 <= self.dark_max_value <= 255:
+            raise ValueError("dark_max_value must be between 0 and 255")
         if not 0 <= self.min_torso_skin <= 1:
             raise ValueError("min_torso_skin must be between 0 and 1")
         for name in ("skin_cr", "skin_cb"):

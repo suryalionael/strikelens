@@ -2,7 +2,8 @@
 
 YOLO detects people and ByteTrack links them within each shot (detect.py, needs
 the `detect` extra). The rest is pure: pick the two fighters in each shot and match
-them to red and blue across camera cuts by the colour of their shorts (assign.py).
+them to red and blue across camera cuts, by kit colour where it is clear (kit.py)
+and otherwise by the colour of their shorts (assign.py).
 
 Output for one fight, under data/processed/<fight>/:
 
@@ -10,20 +11,31 @@ Output for one fight, under data/processed/<fight>/:
 - tracks.json       per frame, the red and the blue box (or null), and per shot
                     which track IDs were red, blue, or dropped
 
-Frames inside marked replays and non-fight segments are skipped. The referee is
-dropped by how little of their chest is skin (referee.py).
+Only frames inside the marked rounds are tracked, and frames inside marked replays
+and non-fight segments are skipped. Both come from fight.json; without rounds the
+whole video is tracked. The referee is dropped by how dark their chest is, or how
+little of it is skin (referee.py).
 """
 
 from strikelens_cv.track.assign import (
     assign_corners,
     build_tracks,
     feature_distance,
+    fighter_kit,
     pick_fighters,
     summarise_tracks,
 )
 from strikelens_cv.track.config import DEFAULT_TRACK_CONFIG, TrackConfig, load_track_config
 from strikelens_cv.track.corrections import load_corrections, parse_corrections
-from strikelens_cv.track.referee import is_referee, is_skin, referee_report, torso_skin_share
+from strikelens_cv.track.kit import kit_colour, kit_shares
+from strikelens_cv.track.referee import (
+    is_dark,
+    is_referee,
+    is_skin,
+    referee_report,
+    torso_dark_share,
+    torso_skin_share,
+)
 from strikelens_cv.track.run import (
     TrackResult,
     assign,
@@ -44,9 +56,13 @@ __all__ = [
     "build_tracks",
     "count_swaps",
     "feature_distance",
+    "fighter_kit",
     "iou",
+    "is_dark",
     "is_referee",
     "is_skin",
+    "kit_colour",
+    "kit_shares",
     "label_frames",
     "load_corrections",
     "load_track_config",
@@ -56,6 +72,7 @@ __all__ = [
     "referee_report",
     "summarise_tracks",
     "swaps",
+    "torso_dark_share",
     "torso_skin_share",
     "track",
     "weights_path",

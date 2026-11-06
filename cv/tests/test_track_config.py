@@ -31,6 +31,9 @@ def test_unknown_key_is_an_error(tmp_path: Path) -> None:
         {"image_size": 0},
         {"min_track_frames": 0},
         {"max_feature_distance": 0},
+        {"min_kit_share": 0},
+        {"min_kit_share": 1.5},
+        {"kit_min_saturation": -0.1},
     ],
 )
 def test_bad_values(values: dict[str, object]) -> None:
