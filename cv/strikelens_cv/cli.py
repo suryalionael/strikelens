@@ -10,6 +10,7 @@ from strikelens_cv import __version__
 from strikelens_cv.ingest.config import DEFAULT_CONFIG
 from strikelens_cv.pose.config import DEFAULT_POSE_CONFIG
 from strikelens_cv.segments.config import DEFAULT_SEGMENT_CONFIG
+from strikelens_cv.segments.core import in_round
 from strikelens_cv.track.config import DEFAULT_TRACK_CONFIG
 
 if TYPE_CHECKING:
@@ -144,6 +145,15 @@ def _report_tracks(result: "TrackResult") -> None:
         f"{seen} of {len(result.frames)} frames have a fighter, {len(shots)} shots, "
         f"{uncertain} uncertain. Written to {result.out_dir / 'tracks.json'}"
     )
+    if result.rounds:
+        inside = sum(1 for f in result.frames if in_round(f["timestamp_ms"], result.rounds))
+        count = len(result.rounds)
+        print(f"Tracked inside {count} {'round' if count == 1 else 'rounds'}: {inside} frames.")
+    else:
+        print(
+            "No rounds in fight.json: tracked the whole video. Mark the rounds in the "
+            "tagger and save the fight as fight.json."
+        )
     if result.assignment["seeded_by"] == "left_is_red":
         print("Red was guessed as the fighter on the left in the first shot. Check it.")
 
