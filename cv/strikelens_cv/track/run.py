@@ -9,7 +9,14 @@ from typing import Any
 from strikelens_cv import __version__
 from strikelens_cv.ingest.cuts import Shot
 from strikelens_cv.paths import models_dir, processed_dir
-from strikelens_cv.segments import Segment, in_segment, load_segments
+from strikelens_cv.segments import (
+    Round,
+    Segment,
+    in_round,
+    in_segment,
+    load_rounds,
+    load_segments,
+)
 from strikelens_cv.track.assign import (
     Assignment,
     Detection,
@@ -35,12 +42,20 @@ class TrackResult:
     out_dir: Path
     assignment: Assignment
     frames: list[TrackFrame]
+    # The rounds tracking was limited to. Empty means the whole video.
+    rounds: list[Round]
 
 
 def label_frames(
-    frames: Sequence[dict[str, Any]], shots: Sequence[Shot], segments: Sequence[Segment]
+    frames: Sequence[dict[str, Any]],
+    shots: Sequence[Shot],
+    segments: Sequence[Segment],
+    rounds: Sequence[Round] = (),
 ) -> list[FrameInfo]:
-    """Give each frame its shot and say whether it is inside a marked segment.
+    """Give each frame its shot and say whether to skip it.
+
+    A frame is skipped when it is inside a marked segment, or outside every round
+    when rounds are marked. With no rounds, only segments are skipped.
 
     A frame on a cut belongs to the shot that starts there. Frames after the last
     shot's end (rounding at the very end of the file) belong to the last shot.
@@ -57,7 +72,7 @@ def label_frames(
                 "index": f["index"],
                 "timestamp_ms": t,
                 "shot": shot,
-                "skipped": in_segment(t, segments),
+                "skipped": in_segment(t, segments) or (bool(rounds) and not in_round(t, rounds)),
             }
         )
     return out
@@ -82,7 +97,11 @@ def weights_path(config: TrackConfig) -> Path:
 
 
 def track(fight: str, config: TrackConfig, corrections: Path | None = None) -> TrackResult:
-    """Detect and track people, then assign red and blue. Needs the detect extra."""
+    """Detect and track people, then assign red and blue. Needs the detect extra.
+
+    Only frames inside the rounds in fight.json are tracked. Without rounds, the
+    whole video is, walkouts and crowd shots included.
+    """
     from strikelens_cv.track.detect import detect
 
     out_dir = processed_dir(fight)
@@ -90,9 +109,10 @@ def track(fight: str, config: TrackConfig, corrections: Path | None = None) -> T
     cuts = _read(out_dir / "cuts.json", "run strikelens-cv ingest first")
     fight_json = out_dir / "fight.json"
     segments = load_segments(fight_json) if fight_json.is_file() else []
+    rounds = load_rounds(fight_json) if fight_json.is_file() else []
     weights = weights_path(config)
 
-    frames = label_frames(manifest["frames"], cuts["shots"], segments)
+    frames = label_frames(manifest["frames"], cuts["shots"], segments, rounds)
     files = {f["index"]: f["file"] for f in manifest["frames"]}
     detections = detect(out_dir / "frames", frames, files, weights, config)
     _write(
@@ -100,6 +120,7 @@ def track(fight: str, config: TrackConfig, corrections: Path | None = None) -> T
         {
             "strikelens_cv": __version__,
             "config": config.as_dict(),
+            "rounds": rounds,
             "frames": frames,
             "detections": detections,
         },
@@ -126,17 +147,20 @@ def assign(fight: str, config: TrackConfig, corrections: Path | None = None) -> 
     data = _read(out_dir / "detections.json", "run strikelens-cv track first")
     fixes = load_corrections(corrections) if corrections else None
     assignment, frames = _assignment(data, config, fixes)
+    # Files from before rounds were read have no "rounds": the whole video was tracked.
+    rounds: list[Round] = data.get("rounds", [])
     _write(
         out_dir / "tracks.json",
         {
             "strikelens_cv": __version__,
             "seeded_by": assignment["seeded_by"],
             "corrections": corrections.name if corrections else None,
+            "rounds": rounds,
             "shots": assignment["shots"],
             "frames": frames,
         },
     )
-    return TrackResult(out_dir=out_dir, assignment=assignment, frames=frames)
+    return TrackResult(out_dir=out_dir, assignment=assignment, frames=frames, rounds=rounds)
 
 
 def swaps(fight: str, config: TrackConfig, corrections: Path) -> SwapReport:

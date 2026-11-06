@@ -11,8 +11,10 @@ Output for one fight, under data/processed/<fight>/:
 - tracks.json       per frame, the red and the blue box (or null), and per shot
                     which track IDs were red, blue, or dropped
 
-Frames inside marked replays and non-fight segments are skipped. The referee is
-dropped by how dark their chest is, or how little of it is skin (referee.py).
+Only frames inside the marked rounds are tracked, and frames inside marked replays
+and non-fight segments are skipped. Both come from fight.json; without rounds the
+whole video is tracked. The referee is dropped by how dark their chest is, or how
+little of it is skin (referee.py).
 """
 
 from strikelens_cv.track.assign import (

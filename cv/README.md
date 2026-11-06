@@ -104,9 +104,12 @@ Ultralytics is AGPL-3.0, which is why StrikeLens is too (ADR 0002).
 How it works:
 
 1. YOLO finds people in each frame and ByteTrack links them, shot by shot. The
-   tracker starts again at every camera cut from `cuts.json`. Frames inside
-   segments marked in the tagger are skipped. To use them, save the fight from the
-   API as `fight.json` first (see Replays above).
+   tracker starts again at every camera cut from `cuts.json`. Only frames inside
+   the rounds marked in the tagger are tracked, and frames inside marked segments
+   are skipped. To use them, save the fight from the API as `fight.json` first
+   (see Replays above). Without rounds, the whole video is tracked, walkouts and
+   crowd shots included, and the command warns about it. After changing the
+   rounds, run `track` again; `assign` alone is not enough.
 2. Tracks that look like the referee are dropped (see Referee filter). In each
    shot, the two strongest remaining tracks are the fighters. A track that never
    overlaps a fighter in time is treated as the same fighter under a new ID. A
@@ -121,7 +124,7 @@ Writes to `data/processed/<fight>/` (gitignored):
 | File | Contents |
 |---|---|
 | `detections.json` | Every person box with its shot, ByteTrack ID, confidence, and colour feature |
-| `tracks.json` | Per frame, the red and blue box (or null). Per shot, which track IDs were red, blue, or dropped, and whether the match was uncertain |
+| `tracks.json` | Per frame, the red and blue box (or null). Per shot, which track IDs were red, blue, or dropped, and whether the match was uncertain. The rounds tracking was limited to (empty for the whole video) |
 
 **Which fighter is red** cannot be known from the boxes alone. In Tryout fights
 the kit says it (`"seeded_by": "kit"`). Otherwise, without corrections, the
@@ -265,7 +268,8 @@ to `data/processed/<fight>/keypoints/red.json` and `blue.json`:
   MediaPipe's depth, scaled by the crop width, so only its relative size means
   anything.
 - A frame without keypoints has `keypoints: null` and a `missing` reason, never
-  zeros: `skipped` (inside a replay or non-fight segment), `no_box` (tracking found
+  zeros: `skipped` (outside the marked rounds, or inside a replay or non-fight
+  segment), `no_box` (tracking found
   no fighter), or `no_pose` (MediaPipe found nobody, or was below
   `min_pose_confidence`).
 
