@@ -11,7 +11,7 @@ Output for one fight, under data/processed/<fight>/:
                     which track IDs were red, blue, or dropped
 
 Frames inside marked replays and non-fight segments are skipped. The referee is
-dropped by how little of their chest is skin (referee.py).
+dropped by how dark their chest is, or how little of it is skin (referee.py).
 """
 
 from strikelens_cv.track.assign import (
@@ -23,7 +23,14 @@ from strikelens_cv.track.assign import (
 )
 from strikelens_cv.track.config import DEFAULT_TRACK_CONFIG, TrackConfig, load_track_config
 from strikelens_cv.track.corrections import load_corrections, parse_corrections
-from strikelens_cv.track.referee import is_referee, is_skin, referee_report, torso_skin_share
+from strikelens_cv.track.referee import (
+    is_dark,
+    is_referee,
+    is_skin,
+    referee_report,
+    torso_dark_share,
+    torso_skin_share,
+)
 from strikelens_cv.track.run import (
     TrackResult,
     assign,
@@ -45,6 +52,7 @@ __all__ = [
     "count_swaps",
     "feature_distance",
     "iou",
+    "is_dark",
     "is_referee",
     "is_skin",
     "label_frames",
@@ -56,6 +64,7 @@ __all__ = [
     "referee_report",
     "summarise_tracks",
     "swaps",
+    "torso_dark_share",
     "torso_skin_share",
     "track",
     "weights_path",

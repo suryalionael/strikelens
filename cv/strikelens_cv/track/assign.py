@@ -30,6 +30,8 @@ class Detection(TypedDict):
     feature: list[float]
     # Share of skin on the chest, for the referee filter. Missing before #20.
     torso_skin: NotRequired[float | None]
+    # Share of dark (black, not skin) pixels on the chest. Missing before the dark rule.
+    torso_dark: NotRequired[float | None]
 
 
 class FrameInfo(TypedDict):
@@ -49,6 +51,7 @@ class TrackSummary(TypedDict):
     mean_x: float
     feature: list[float]
     torso_skin: float | None
+    torso_dark: float | None
 
 
 class Fighter(TypedDict):
@@ -119,6 +122,7 @@ def summarise_tracks(detections: Iterable[Detection]) -> list[TrackSummary]:
     for (shot, track_id), items in sorted(grouped.items()):
         areas = [_area(d["box"]) for d in items]
         skins = [s for d in items if (s := d.get("torso_skin")) is not None]
+        darks = [s for d in items if (s := d.get("torso_dark")) is not None]
         summaries.append(
             {
                 "shot": shot,
@@ -130,6 +134,7 @@ def summarise_tracks(detections: Iterable[Detection]) -> list[TrackSummary]:
                 "mean_x": sum((d["box"][0] + d["box"][2]) / 2 for d in items) / len(items),
                 "feature": _weighted_mean([d["feature"] for d in items], [1.0] * len(items)),
                 "torso_skin": sum(skins) / len(skins) if skins else None,
+                "torso_dark": sum(darks) / len(darks) if darks else None,
             }
         )
     return summaries

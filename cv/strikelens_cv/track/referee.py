@@ -1,8 +1,19 @@
-"""Referee filter: kickboxers fight shirtless, the referee wears a shirt.
+"""Referee filter: tell the referee from the fighters by their chest.
 
-The signal is how much of a person's chest is skin. Skin is found with the usual
-YCrCb rule: convert each pixel and check its Cr and Cb against a range. Brightness
-(Y) is ignored, which is what makes one range work for light and dark skin.
+Two rules, chosen with `referee_rule` in track.toml:
+
+- `dark` (default): Byon referees wear black. A track whose chest is mostly dark
+  is the referee. This works whether fighters are shirtless (Madness) or wear red
+  and blue singlets (Tryouts). A dark pixel has its brightest channel at or below
+  `dark_max_value` and is not skin. The brightest channel, not luma, because pure
+  blue has a luma of about 29 and a blue singlet would pass as black. The skin
+  check keeps very dark skin in shadow from passing as a black shirt.
+- `skin`: fighters are shirtless and the referee wears a shirt of any colour. A
+  track whose chest is mostly not skin is the referee. Drops fighters in a top.
+
+Skin is found with the usual YCrCb rule: convert each pixel and check its Cr and
+Cb against a range. Brightness (Y) is ignored, which is what makes one range work
+for light and dark skin.
 
 Pure Python on plain pixel lists, so it is tested in CI without OpenCV. The detect
 stage samples a small grid of chest pixels per box and calls these functions.
@@ -49,6 +60,20 @@ def torso_skin_share(pixels: Iterable[Pixel], config: TrackConfig) -> float | No
     return skin / total if total else None
 
 
+def is_dark(pixel: Pixel, config: TrackConfig) -> bool:
+    """Black or near black, and not skin."""
+    return max(pixel) <= config.dark_max_value and not is_skin(pixel, config)
+
+
+def torso_dark_share(pixels: Iterable[Pixel], config: TrackConfig) -> float | None:
+    """Share of dark pixels, from 0 to 1. None when there are no pixels to judge."""
+    total = dark = 0
+    for pixel in pixels:
+        total += 1
+        dark += is_dark(pixel, config)
+    return dark / total if total else None
+
+
 def torso_box(box: Sequence[float]) -> Box:
     """The chest: 20-45% down the person box and the middle half across.
 
@@ -65,12 +90,19 @@ def referee_score(skin_share: float | None) -> float | None:
 
 
 def is_referee(track: TrackSummary, config: TrackConfig) -> bool:
-    """True when the filter is on and the track's chest is mostly not skin.
+    """True when the filter is on and the track's chest looks like the referee's.
 
-    A track without a measurement (detections from before #20) is kept.
+    With the dark rule, the chest is mostly dark. With the skin rule, it is mostly
+    not skin. A track without the measurement the rule needs (detections from an
+    older version) is kept.
     """
+    if not config.referee_filter:
+        return False
+    if config.referee_rule == "dark":
+        dark = track["torso_dark"]
+        return dark is not None and dark >= config.min_torso_dark
     skin = track["torso_skin"]
-    return config.referee_filter and skin is not None and skin < config.min_torso_skin
+    return skin is not None and skin < config.min_torso_skin
 
 
 def referee_report(

@@ -128,20 +128,39 @@ prints a warning. Check that guess and correct it.
 
 ### Referee filter
 
-Kickboxers fight shirtless and the referee wears a shirt. For each box, `track`
-measures how much of the chest (20-45% down the box, middle half across) is
-skin, and stores it as `torso_skin` in `detections.json`. A track whose average is
-below `min_torso_skin` (0.25) is dropped as the referee.
+For each box, `track` samples the chest (20-45% down the box, middle half across)
+and stores two shares in `detections.json`: `torso_dark`, the share of dark
+pixels, and `torso_skin`, the share of skin pixels. `referee_rule` picks which one
+finds the referee:
+
+- **`dark` (default).** Byon referees wear black. A track whose average
+  `torso_dark` is at least `min_torso_dark` (0.5) is dropped as the referee. This
+  works for shirtless fighters (Madness) and for fighters in red and blue
+  singlets (Tryouts). A pixel is dark when its brightest channel is at most
+  `dark_max_value` (70) and it is not skin. The brightest channel is used instead
+  of brightness (Y), because a pure blue singlet has a Y of about 29 and would
+  pass as black. The skin check keeps very dark skin in shadow from passing as a
+  black shirt.
+- **`skin`.** For shirtless fighters and a referee in a shirt that is not black.
+  A track whose average `torso_skin` is below `min_torso_skin` (0.25) is dropped.
+  Fighters in a top are dropped too: on the first Tryout run, fighters in
+  singlets were dropped from most frames.
 
 Skin is found with the usual YCrCb rule. Each pixel's Cr and Cb must fall inside
 `skin_cr` and `skin_cb`. Brightness is ignored, so one range covers light and dark
-skin. All of these are in `configs/track.toml`.
+skin. All of these are in `configs/track.toml`. The chest is measured while
+detecting, so after changing them run `track` again. Detections from before the
+dark rule have no `torso_dark`, and the dark rule keeps all of their tracks.
 
 Known limits. Check these on real footage before trusting the filter:
 
-- **Fighters in a top** (a sports top or a rash guard) look like the referee. Set
-  `referee_filter = false` for those fights, or pin the fighters with corrections.
-  A correction always beats the filter.
+- **A referee not in black** (white or grey shirt) is not dark. Use the skin rule
+  if the fighters are shirtless, or remove the referee with corrections.
+- **Fighters in black or very dark kit** look like the referee under the dark
+  rule. Pin them with corrections, or set `referee_filter = false`.
+- **Fighters in a top** (a sports top or a rash guard) look like the referee under
+  the skin rule. Use the dark rule, set `referee_filter = false`, or pin the
+  fighters with corrections. A correction always beats the filter.
 - **Skin-coloured things count as skin**: a beige or brown shirt, a warm
   background, or a face. In close-ups the chest band can catch the face. On
   Ultralytics' sample photo of two men in suits, the band measured 40% and 56% skin,
