@@ -10,7 +10,8 @@ from typing import Any
 
 from strikelens_cv.track.assign import Detection, FrameInfo
 from strikelens_cv.track.config import TrackConfig
-from strikelens_cv.track.referee import torso_box, torso_skin_share
+from strikelens_cv.track.kit import kit_shares
+from strikelens_cv.track.referee import Pixel, torso_box, torso_dark_share, torso_skin_share
 
 PERSON_CLASS = 0
 HUE_BINS = 8
@@ -42,8 +43,8 @@ def _feature(image: Any, box: Sequence[float]) -> list[float]:
 TORSO_SAMPLE = 16  # the chest is shrunk to 16 x 16 pixels before judging skin
 
 
-def _torso_skin(image: Any, box: Sequence[float], config: TrackConfig) -> float | None:
-    """Share of skin on the chest, from a small sample of its pixels."""
+def _torso_pixels(image: Any, box: Sequence[float]) -> list[Pixel]:
+    """A small sample of the chest's pixels. Empty when the chest is off the image."""
     import cv2
 
     height, width = image.shape[:2]
@@ -52,10 +53,12 @@ def _torso_skin(image: Any, box: Sequence[float], config: TrackConfig) -> float 
     y1, y2 = (min(max(round(v), 0), height) for v in (y1, y2))
     crop = image[y1:y2, x1:x2]
     if crop.size == 0:
-        return None
+        return []
     sample = cv2.resize(crop, (TORSO_SAMPLE, TORSO_SAMPLE), interpolation=cv2.INTER_AREA)
-    pixels = [tuple(int(c) for c in px) for row in sample.tolist() for px in row]
-    share = torso_skin_share(pixels, config)  # type: ignore[arg-type]
+    return [(int(px[0]), int(px[1]), int(px[2])) for row in sample.tolist() for px in row]
+
+
+def _rounded(share: float | None) -> float | None:
     return None if share is None else round(share, 3)
 
 
@@ -100,6 +103,8 @@ def detect(
         for xyxy, track_id, conf in zip(
             boxes.xyxy.tolist(), boxes.id.int().tolist(), boxes.conf.tolist(), strict=True
         ):
+            chest = _torso_pixels(image, xyxy)
+            red, blue = kit_shares(chest, config) or (None, None)
             detections.append(
                 {
                     "frame": frame["index"],
@@ -108,7 +113,10 @@ def detect(
                     "box": [round(float(v), 1) for v in xyxy],
                     "confidence": round(float(conf), 3),
                     "feature": [round(v, 4) for v in _feature(image, xyxy)],
-                    "torso_skin": _torso_skin(image, xyxy, config),
+                    "torso_skin": _rounded(torso_skin_share(chest, config)),
+                    "torso_dark": _rounded(torso_dark_share(chest, config)),
+                    "torso_red": _rounded(red),
+                    "torso_blue": _rounded(blue),
                 }
             )
     return detections
