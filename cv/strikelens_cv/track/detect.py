@@ -10,6 +10,7 @@ from typing import Any
 
 from strikelens_cv.track.assign import Detection, FrameInfo
 from strikelens_cv.track.config import TrackConfig
+from strikelens_cv.track.kit import kit_shares
 from strikelens_cv.track.referee import Pixel, torso_box, torso_dark_share, torso_skin_share
 
 PERSON_CLASS = 0
@@ -103,6 +104,7 @@ def detect(
             boxes.xyxy.tolist(), boxes.id.int().tolist(), boxes.conf.tolist(), strict=True
         ):
             chest = _torso_pixels(image, xyxy)
+            red, blue = kit_shares(chest, config) or (None, None)
             detections.append(
                 {
                     "frame": frame["index"],
@@ -113,6 +115,8 @@ def detect(
                     "feature": [round(v, 4) for v in _feature(image, xyxy)],
                     "torso_skin": _rounded(torso_skin_share(chest, config)),
                     "torso_dark": _rounded(torso_dark_share(chest, config)),
+                    "torso_red": _rounded(red),
+                    "torso_blue": _rounded(blue),
                 }
             )
     return detections

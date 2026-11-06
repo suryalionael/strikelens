@@ -139,11 +139,13 @@ def run_suggest(args: argparse.Namespace) -> int:
 def _report_tracks(result: "TrackResult") -> None:
     shots = result.assignment["shots"]
     uncertain = sum(1 for s in shots if s["uncertain"])
+    by_kit = sum(1 for s in shots if s["by_kit"])
     seen = sum(1 for f in result.frames if f["red"] or f["blue"])
     print(
         f"{seen} of {len(result.frames)} frames have a fighter, {len(shots)} shots, "
         f"{uncertain} uncertain. Written to {result.out_dir / 'tracks.json'}"
     )
+    print(f"{by_kit} of {len(shots)} shots decided by kit colour.")
     if result.assignment["seeded_by"] == "left_is_red":
         print("Red was guessed as the fighter on the left in the first shot. Check it.")
 

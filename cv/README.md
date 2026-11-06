@@ -111,8 +111,10 @@ How it works:
    shot, the two strongest remaining tracks are the fighters. A track that never
    overlaps a fighter in time is treated as the same fighter under a new ID. A
    third person overlapping both is dropped.
-3. Across shots, fighters are matched to red and blue by the colour of their
-   shorts: a hue and saturation histogram of the middle of the box.
+3. Across shots, fighters are matched to red and blue. A fighter in clearly red
+   or blue kit takes that corner (see Kit colour). Everyone else is matched by
+   the colour of their shorts: a hue and saturation histogram of the middle of
+   the box.
 
 Writes to `data/processed/<fight>/` (gitignored):
 
@@ -121,10 +123,36 @@ Writes to `data/processed/<fight>/` (gitignored):
 | `detections.json` | Every person box with its shot, ByteTrack ID, confidence, and colour feature |
 | `tracks.json` | Per frame, the red and blue box (or null). Per shot, which track IDs were red, blue, or dropped, and whether the match was uncertain |
 
-**Which fighter is red** cannot be known from the boxes alone. Without
-corrections, the fighter on the left in the first shot with two fighters is taken
-as red. `tracks.json` says so (`"seeded_by": "left_is_red"`) and the command
-prints a warning. Check that guess and correct it.
+**Which fighter is red** cannot be known from the boxes alone. In Tryout fights
+the kit says it (`"seeded_by": "kit"`). Otherwise, without corrections, the
+fighter on the left in the first shot with two fighters is taken as red.
+`tracks.json` says so (`"seeded_by": "left_is_red"`) and the command prints a
+warning. Check that guess and correct it.
+
+### Kit colour
+
+In Tryout fights the red corner wears a red singlet and the blue corner a blue
+one. For each box, `track` stores `torso_red` and `torso_blue` in
+`detections.json`: the shares of the chest (the same pixels as the referee
+filter) that are red or blue kit. A kit pixel is not skin, not dark, and has a
+saturation of at least `kit_min_saturation` (0.4). Red is a hue of 0-15 or
+345-360 degrees, blue 190-250.
+
+In each shot, a fighter whose red share is at least `min_kit_share` (0.3) above
+their blue share is red, and the other way round for blue. The kit comes after
+corrections and before the shorts colour. It also teaches the shorts colours, so
+shots where the kit is hard to see still match well. If two fighters in a shot
+claim the same corner, or a correction already holds it, the kit is ignored for
+that shot. Shirtless fighters show skin and the referee wears black, so neither
+has kit, and those fights work as before. `tracks.json` marks each shot the kit
+decided (`"by_kit": true`), and the command prints how many there were.
+
+Known limits. Check these on real footage:
+
+- **Gloves in the chest band.** With a high guard, red or blue gloves can cover
+  the chest. If the gloves are not in the corner colour, this can mislead the kit.
+- **Blue canvas or ropes** between the arms count as blue.
+- **Events where the kit does not match the corner.** Set `kit_corner = false`.
 
 ### Referee filter
 

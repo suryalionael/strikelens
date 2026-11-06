@@ -19,6 +19,9 @@ class TrackConfig:
     image_size: int = 640
     min_track_frames: int = 5
     max_feature_distance: float = 0.5
+    kit_corner: bool = True
+    min_kit_share: float = 0.3
+    kit_min_saturation: float = 0.4
     referee_filter: bool = True
     referee_rule: RefereeRule = "dark"
     min_torso_dark: float = 0.5
@@ -38,6 +41,10 @@ class TrackConfig:
             raise ValueError("min_track_frames must be at least 1")
         if not 0 < self.max_feature_distance <= 1:
             raise ValueError("max_feature_distance must be above 0 and at most 1")
+        if not 0 < self.min_kit_share <= 1:
+            raise ValueError("min_kit_share must be above 0 and at most 1")
+        if not 0 <= self.kit_min_saturation <= 1:
+            raise ValueError("kit_min_saturation must be between 0 and 1")
         if self.referee_rule not in get_args(RefereeRule):
             raise ValueError(f"referee_rule must be one of {', '.join(get_args(RefereeRule))}")
         if not 0 <= self.min_torso_dark <= 1:

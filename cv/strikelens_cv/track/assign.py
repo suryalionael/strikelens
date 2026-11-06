@@ -2,7 +2,8 @@
 
 ByteTrack IDs only last within a shot: a camera cut starts new IDs. So within each
 shot we pick at most two fighters (each may be several track fragments), and across
-shots we match them to red and blue by how their shorts look (a colour histogram).
+shots we match them to red and blue: by their kit colour where it is clear (red or
+blue singlets, kit.py), otherwise by how their shorts look (a colour histogram).
 
 All functions here are pure: plain lists and dicts in, plain lists and dicts out.
 """
@@ -18,7 +19,8 @@ from strikelens_cv.track.corrections import Corner, Corrections
 CORNERS: tuple[Corner, ...] = ("red", "blue")
 
 Box = list[float]  # [x1, y1, x2, y2] in pixels
-SeededBy = Literal["corrections", "left_is_red", "none"]
+SeededBy = Literal["corrections", "kit", "left_is_red", "none"]
+KitShare = Literal["torso_red", "torso_blue"]
 
 
 class Detection(TypedDict):
@@ -32,6 +34,9 @@ class Detection(TypedDict):
     torso_skin: NotRequired[float | None]
     # Share of dark (black, not skin) pixels on the chest. Missing before the dark rule.
     torso_dark: NotRequired[float | None]
+    # Shares of red and blue kit pixels on the chest. Missing before kit colour.
+    torso_red: NotRequired[float | None]
+    torso_blue: NotRequired[float | None]
 
 
 class FrameInfo(TypedDict):
@@ -52,6 +57,8 @@ class TrackSummary(TypedDict):
     feature: list[float]
     torso_skin: float | None
     torso_dark: float | None
+    torso_red: float | None
+    torso_blue: float | None
 
 
 class Fighter(TypedDict):
@@ -60,6 +67,8 @@ class Fighter(TypedDict):
     mean_x: float
     feature: list[float]
     corner: Corner | None  # set only by a correction
+    kit_red: float | None
+    kit_blue: float | None
 
 
 class ShotResult(TypedDict):
@@ -68,6 +77,7 @@ class ShotResult(TypedDict):
     blue: list[int]
     dropped: list[int]
     uncertain: bool
+    by_kit: bool  # the kit colour decided at least one corner
 
 
 class Assignment(TypedDict):
@@ -123,6 +133,8 @@ def summarise_tracks(detections: Iterable[Detection]) -> list[TrackSummary]:
         areas = [_area(d["box"]) for d in items]
         skins = [s for d in items if (s := d.get("torso_skin")) is not None]
         darks = [s for d in items if (s := d.get("torso_dark")) is not None]
+        reds = [s for d in items if (s := d.get("torso_red")) is not None]
+        blues = [s for d in items if (s := d.get("torso_blue")) is not None]
         summaries.append(
             {
                 "shot": shot,
@@ -135,9 +147,18 @@ def summarise_tracks(detections: Iterable[Detection]) -> list[TrackSummary]:
                 "feature": _weighted_mean([d["feature"] for d in items], [1.0] * len(items)),
                 "torso_skin": sum(skins) / len(skins) if skins else None,
                 "torso_dark": sum(darks) / len(darks) if darks else None,
+                "torso_red": sum(reds) / len(reds) if reds else None,
+                "torso_blue": sum(blues) / len(blues) if blues else None,
             }
         )
     return summaries
+
+
+def _kit_mean(tracks: Sequence[TrackSummary], key: KitShare) -> float | None:
+    """Frame-weighted mean of a kit share over the tracks that have one."""
+    pairs = [(share, t["frames"]) for t in tracks if (share := t[key]) is not None]
+    total = sum(frames for _, frames in pairs)
+    return sum(share * frames for share, frames in pairs) / total if total else None
 
 
 def _fighter(tracks: Sequence[TrackSummary], corner: Corner | None) -> Fighter:
@@ -148,7 +169,21 @@ def _fighter(tracks: Sequence[TrackSummary], corner: Corner | None) -> Fighter:
         "mean_x": sum(t["mean_x"] * t["frames"] for t in tracks) / sum(weights),
         "feature": _weighted_mean([t["feature"] for t in tracks], weights),
         "corner": corner,
+        "kit_red": _kit_mean(tracks, "torso_red"),
+        "kit_blue": _kit_mean(tracks, "torso_blue"),
     }
+
+
+def fighter_kit(fighter: Fighter, config: TrackConfig) -> Corner | None:
+    """The corner a fighter's kit says, or None when it is not clearly red or blue."""
+    red, blue = fighter["kit_red"], fighter["kit_blue"]
+    if red is None or blue is None:
+        return None
+    if red - blue >= config.min_kit_share:
+        return "red"
+    if blue - red >= config.min_kit_share:
+        return "blue"
+    return None
 
 
 def pick_fighters(
@@ -212,6 +247,23 @@ def _update(ref: list[float] | None, weight: float, fighter: Fighter) -> tuple[l
     return new, weight + fighter["frames"]
 
 
+def _kit_claims(
+    free: Sequence[Fighter], taken: Iterable[Corner], config: TrackConfig
+) -> dict[Corner, Fighter]:
+    """Corners the kit colour settles in one shot. Empty when the kit is off or unclear.
+
+    If two fighters claim the same corner, or a correction already holds it, the
+    kit is not trusted for this shot at all.
+    """
+    if not config.kit_corner:
+        return {}
+    claims = [(c, f) for f in free if (c := fighter_kit(f, config)) is not None]
+    corners = [c for c, _ in claims]
+    if len(set(corners)) < len(corners) or set(corners) & set(taken):
+        return {}
+    return dict(claims)
+
+
 def assign_corners(
     summaries: Sequence[TrackSummary],
     config: TrackConfig,
@@ -220,11 +272,13 @@ def assign_corners(
 ) -> Assignment:
     """Red and blue track IDs for every shot, in shot order.
 
-    Each corner keeps a reference look (running mean of its fighters' features).
-    Corrections pin tracks and seed the references. With no correction before the
-    first shot that shows two fighters, the left one is taken as red. That is a
-    provisional guess, reported as `seeded_by: "left_is_red"`, for the analyst to
-    check and correct.
+    Trust goes corrections, then kit colour, then the shorts histogram. Each
+    corner keeps a reference look (running mean of its fighters' features).
+    Corrections pin tracks, and a fighter in clearly red or blue kit takes that
+    corner; both teach the references. Other fighters are matched to the
+    references. With nothing to go on before the first shot that shows two
+    fighters, the left one is taken as red. That is a provisional guess, reported
+    as `seeded_by: "left_is_red"`, for the analyst to check and correct.
     """
     by_shot: dict[int, list[TrackSummary]] = defaultdict(list)
     for s in summaries:
@@ -241,6 +295,12 @@ def assign_corners(
         if chosen and seeded_by == "none":
             seeded_by = "corrections"
         free = [f for f in fighters if f["corner"] is None]
+        by_kit = _kit_claims(free, chosen, config)
+        if by_kit:
+            chosen.update(by_kit)
+            free = [f for f in free if not any(f is k for k in by_kit.values())]
+            if seeded_by == "none":
+                seeded_by = "kit"
         open_corners = [c for c in CORNERS if c not in chosen]
         uncertain = False
 
@@ -272,7 +332,7 @@ def assign_corners(
 
         for corner, fighter in chosen.items():
             # An uncertain match is still reported, but it must not teach the references.
-            if fighter["corner"] is not None or not uncertain:
+            if fighter["corner"] is not None or corner in by_kit or not uncertain:
                 refs[corner], weights[corner] = _update(refs[corner], weights[corner], fighter)
 
         results.append(
@@ -282,6 +342,7 @@ def assign_corners(
                 "blue": chosen["blue"]["track_ids"] if "blue" in chosen else [],
                 "dropped": dropped,
                 "uncertain": uncertain,
+                "by_kit": bool(by_kit),
             }
         )
     return {"seeded_by": seeded_by, "shots": results}

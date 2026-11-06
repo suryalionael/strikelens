@@ -17,6 +17,21 @@ min_track_frames = 5
 # the red and blue references is marked uncertain and not used to update them.
 max_feature_distance = 0.5
 
+# Kit colour. In Tryout fights the red corner wears a red singlet and blue a blue
+# one, so a fighter whose chest is clearly red or blue takes that corner in every
+# shot, before the shorts colour is used. Shirtless fighters show no kit and fall
+# back to the shorts. Turn it off for events where the kit does not match the
+# corner. A correction always beats the kit.
+kit_corner = true
+
+# Lowest gap between a fighter's red and blue kit shares (0 to 1) for the kit to
+# decide. Only needs `strikelens-cv assign` again after changing.
+min_kit_share = 0.3
+
+# Lowest saturation (0 to 1) for a chest pixel to count as kit, so pale and grey
+# pixels do not. Measured while detecting: needs `strikelens-cv track` again.
+kit_min_saturation = 0.4
+
 # Referee filter (#20). A track whose chest looks like the referee's is dropped.
 # A correction always beats the filter. Changing any referee setting needs
 # `strikelens-cv track` again, because the chest is measured while detecting.
