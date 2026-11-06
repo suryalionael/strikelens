@@ -260,9 +260,17 @@ Further questions raised while writing these definitions:
 7. Do you include pauses (referee breaks, doctor checks) in fight time?
 8. Is target distribution based on landed strikes or on all attempts?
 9. Do you separate any strike types beyond jab, cross, hook, uppercut, kick, teep,
-   knee, elbow (for example backfist, spinning strikes, sweeps)? Does Byon allow elbows?
+   knee, elbow? Byon's rules (UCC Kickstriking, see [rules.md](rules.md)) allow
+   slicing elbows, the backfist, the spinning backfist, and spinning and flying
+   strikes, and ban sweeps. Do you count backfists, or spinning and flying
+   strikes, as their own categories?
 10. Do you track defensive actions (blocks, checks, slips, clinches)? If so, which?
 11. Do clinch strikes (knees in the clinch) count the same as strikes at range?
+    Byon's rules allow one strike per clinch and one strike after catching a kick.
 12. When the broadcast shows a replay during a round, do you subtract that time from
     fight time? How do you handle strikes thrown while the replay was on screen, which
     nobody watching the broadcast can see?
+13. Do you count knockdowns? The rules define a knockdown and say the referee
+    decides it. Do you follow the referee's call, or your own reading of the video?
+14. A calf kick only scores with judges when it has a visible effect. For
+    "landed", does a calf kick count whenever it connects, or only with an effect?
