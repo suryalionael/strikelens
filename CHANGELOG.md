@@ -69,6 +69,23 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `blue.json`, with the format recorded. Frames without keypoints are null with a
   reason (skipped, no box, no pose), never zeros. The backend can be swapped for
   RTMPose. The model is read from `models/` and never downloaded (#21).
+- Kit colour corners: in Tryout fights, where the red corner wears a red singlet
+  and the blue corner a blue one, tracking reads red and blue from the kit on the
+  chest. Fights without corner kit work as before. Turn it off with
+  `kit_corner = false` (#19).
+- Referee filter by a dark shirt: Byon referees wear black, so the default rule
+  now drops a person whose chest is mostly dark. It works for shirtless fighters
+  and for fighters in singlets, which the skin rule dropped. The skin rule is
+  still there (`referee_rule = "skin"`) (#20).
+- Tracking only inside marked rounds: frames outside the rounds in `fight.json`
+  (walkouts, intros, breaks, the result) are skipped. A fight with no rounds is
+  still tracked over the whole video, with a warning (#19).
+- Overlay video: `strikelens-cv overlay` draws the red and blue boxes, skeletons,
+  and a strike timeline from confirmed tags onto the fight, one round or all.
+  `--ids` labels every person with shot and track ID, to help write corrections.
+  Output stays in `data/processed/` (#22).
+- Fight rules: `docs/rules.md` summarises the UCC Kickstriking rules Byon fights
+  under. Open questions 13 and 14 were added for Freefly (#54).
 
 ### Fixed
 
