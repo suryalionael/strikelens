@@ -22,9 +22,14 @@ def person(
     colour: int,
     width: float = 100,
     confidence: float = 0.9,
+    kit: tuple[float, float] | None = None,
 ) -> list[Detection]:
-    """One tracked person standing at x across the given frames."""
-    return [
+    """One tracked person standing at x across the given frames.
+
+    `kit` is the (red, blue) share of kit pixels on the chest, for a fighter in a
+    singlet. Without it the detections have no kit measurement.
+    """
+    detections: list[Detection] = [
         {
             "frame": f,
             "shot": shot,
@@ -35,3 +40,7 @@ def person(
         }
         for f in frames
     ]
+    if kit is not None:
+        for d in detections:
+            d["torso_red"], d["torso_blue"] = kit
+    return detections

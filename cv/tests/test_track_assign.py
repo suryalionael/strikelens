@@ -131,6 +131,7 @@ class TestAssignCorners:
             "blue": [],
             "dropped": [1],
             "uncertain": True,
+            "by_kit": False,
         }
         assert result["seeded_by"] == "none"
 
@@ -146,6 +147,76 @@ class TestAssignCorners:
         assert result["shots"][3]["uncertain"]
         assert (result["shots"][4]["red"], result["shots"][4]["blue"]) == ([1], [2])
         assert not result["shots"][4]["uncertain"]
+
+
+RED_KIT = (0.8, 0.0)
+BLUE_KIT = (0.0, 0.8)
+
+
+def _shorts_fooled() -> list:
+    """Tryout fighters in singlets. In shot 1 the shorts band picks up the wrong
+    colour (the ropes, the other fighter), so by shorts alone they would swap."""
+    return (
+        person(0, 1, range(0, 10), 50, RED_SHORTS, kit=RED_KIT)
+        + person(0, 2, range(0, 10), 400, BLUE_SHORTS, kit=BLUE_KIT)
+        + person(1, 1, range(10, 20), 400, BLUE_SHORTS, kit=RED_KIT)
+        + person(1, 2, range(10, 20), 50, RED_SHORTS, kit=BLUE_KIT)
+    )
+
+
+class TestKitColour:
+    def test_kit_beats_left_is_red(self) -> None:
+        # Red corner stands on the right in the first shot.
+        detections = person(0, 1, range(10), 50, BLUE_SHORTS, kit=BLUE_KIT) + person(
+            0, 2, range(10), 400, RED_SHORTS, kit=RED_KIT
+        )
+        result = assign_corners(summarise_tracks(detections), CONFIG)
+        assert result["seeded_by"] == "kit"
+        assert (result["shots"][0]["red"], result["shots"][0]["blue"]) == ([2], [1])
+        assert result["shots"][0]["by_kit"]
+
+    def test_kit_beats_the_shorts_in_every_shot(self) -> None:
+        result = assign_corners(summarise_tracks(_shorts_fooled()), CONFIG)
+        assert [(s["red"], s["blue"]) for s in result["shots"]] == [([1], [2]), ([1], [2])]
+        assert all(s["by_kit"] for s in result["shots"])
+
+    def test_with_kit_off_the_shorts_decide(self) -> None:
+        off = TrackConfig(min_track_frames=3, kit_corner=False)
+        result = assign_corners(summarise_tracks(_shorts_fooled()), off)
+        assert result["seeded_by"] == "left_is_red"
+        assert result["shots"][1]["red"] == [2]  # the swap the kit prevents
+        assert not any(s["by_kit"] for s in result["shots"])
+
+    def test_one_fighter_in_kit_in_the_first_shot_is_assigned(self) -> None:
+        detections = person(0, 1, range(10), 50, BLUE_SHORTS, kit=BLUE_KIT)
+        result = assign_corners(summarise_tracks(detections), CONFIG)
+        assert result["shots"][0]["blue"] == [1]
+        assert not result["shots"][0]["uncertain"]
+
+    def test_two_fighters_in_the_same_kit_fall_back_to_the_shorts(self) -> None:
+        detections = _swapping_sides() + (
+            person(3, 1, range(30, 40), 400, RED_SHORTS, kit=RED_KIT)
+            + person(3, 2, range(30, 40), 50, BLUE_SHORTS, kit=RED_KIT)
+        )
+        result = assign_corners(summarise_tracks(detections), CONFIG)
+        assert (result["shots"][3]["red"], result["shots"][3]["blue"]) == ([1], [2])
+        assert not result["shots"][3]["by_kit"]
+
+    def test_a_correction_beats_the_kit(self) -> None:
+        # The analyst pins track 2 as red; track 1's kit also says red, so the kit
+        # is not trusted in this shot.
+        detections = person(0, 1, range(10), 50, RED_SHORTS, kit=RED_KIT) + person(
+            0, 2, range(10), 400, BLUE_SHORTS, kit=BLUE_KIT
+        )
+        result = assign_corners(summarise_tracks(detections), CONFIG, {(0, 2): "red"})
+        assert result["seeded_by"] == "corrections"
+        assert (result["shots"][0]["red"], result["shots"][0]["blue"]) == ([2], [1])
+        assert not result["shots"][0]["by_kit"]
+
+    def test_shirtless_fighters_are_not_decided_by_kit(self) -> None:
+        result = assign_corners(summarise_tracks(_swapping_sides()), CONFIG)
+        assert result["seeded_by"] == "left_is_red"
+        assert not any(s["by_kit"] for s in result["shots"])
 
 
 def test_build_tracks_one_entry_per_frame() -> None:
