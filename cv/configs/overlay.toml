@@ -1,0 +1,16 @@
+# Settings for `strikelens-cv overlay`. Safe to commit.
+
+# Lowest MediaPipe visibility (0 to 1) for a keypoint to be drawn. A bone is drawn
+# only when both of its ends pass.
+min_visibility = 0.5
+
+# Height in pixels of the strike timeline strip added below the video.
+timeline_height = 48
+
+# H.264 quality for FFmpeg's -crf, from 0 (lossless) to 51 (smallest). 18-23 looks
+# good for a demo.
+crf = 20
+
+# Credit line drawn on every frame. Required before sharing a clip outside the
+# team (docs/data-policy.md, Demo material).
+credit = "Footage: Byon Combat. Analysis: StrikeLens"

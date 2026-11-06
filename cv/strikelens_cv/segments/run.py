@@ -2,17 +2,23 @@
 
 import json
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from strikelens_cv import __version__
-from strikelens_cv.ingest.cuts import Shot
 from strikelens_cv.paths import processed_dir
 from strikelens_cv.segments.config import SegmentConfig
 from strikelens_cv.segments.core import Suggestion, suggest_segments
 
+if TYPE_CHECKING:
+    # Only a type here; see segments/core.py.
+    from strikelens_cv.ingest.cuts import Shot
+
 SUGGESTIONS_FILE = "segment-suggestions.json"
 
 
-def write_suggestions(out_dir: Path, shots: list[Shot], config: SegmentConfig) -> list[Suggestion]:
+def write_suggestions(
+    out_dir: Path, shots: list["Shot"], config: SegmentConfig
+) -> list[Suggestion]:
     """Write segment-suggestions.json next to cuts.json. The tagger loads this file."""
     suggestions = suggest_segments(shots, config)
     data = {"strikelens_cv": __version__, "config": config.as_dict(), "suggestions": suggestions}

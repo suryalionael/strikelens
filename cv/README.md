@@ -240,6 +240,50 @@ in, keypoints out), so RTMPose can replace MediaPipe (ADR 0004).
 `tests/test_pose_end_to_end.py` runs MediaPipe on a sample photo. It skips unless
 the pose extra and the model are installed.
 
+## Overlay
+
+Draws the red and blue boxes, their skeletons, and a strike timeline onto the
+fight, for the Gate 2 demo video. Needs FFmpeg, the `ingest` extra, and the
+output of `ingest`, `track`, and `pose` for the fight:
+
+```bash
+uv run strikelens-cv overlay --fight "Byon 40 main event" --round 1
+```
+
+It renders the frames ingest extracted, at the ingest fps (10 by default), so
+every box sits on the frame it was measured on. For a smoother demo, ingest that
+fight at a higher `fps` in `configs/ingest.toml` and run the stages again.
+
+What it reads from `data/processed/<fight>/`:
+
+- `frames.json`, `frames/`, `detections.json`, `tracks.json`: required.
+- `keypoints/red.json`, `keypoints/blue.json`: skeletons. Without them, boxes only.
+- `fight.json`: rounds (see Replays above). `--round N` renders one round.
+  Without `--round`, every round. Without rounds, every frame that was tracked.
+- `tags.json`: tags for the timeline. Save them from the API like `fight.json`:
+
+  ```bash
+  curl -s "http://localhost:8000/fights/<fight-id>/tags?status=confirmed" > data/processed/<fight>/tags.json
+  ```
+
+  Only confirmed tags are drawn: a tick above the line for red, below for blue.
+  Without the file, the timeline is empty.
+
+It writes `overlay.mp4` (or `overlay-round-<N>.mp4`): H.264, which plays in
+browsers and on phones. Every frame carries the `credit` line from
+`configs/overlay.toml`.
+
+**Writing corrections.** `--ids` draws every person instead, labelled with shot
+and track ID (`s3 t12`), in red or blue when the track was assigned to a corner
+and grey otherwise. Use it to write `track-corrections.json` (see Corrections).
+It writes `overlay-ids.mp4` or `overlay-ids-round-<N>.mp4`.
+
+**Before sharing.** The video uses real footage. Read the Demo material section of
+[docs/data-policy.md](../docs/data-policy.md) before it leaves the team.
+
+`tests/test_overlay_end_to_end.py` renders synthetic frames and checks the MP4
+with ffprobe. It skips unless FFmpeg and the `ingest` extra are installed.
+
 Subpackages:
 
 - `ingest/`: frame extraction (FFmpeg) and cut detection.
