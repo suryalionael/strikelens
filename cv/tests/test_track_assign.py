@@ -236,3 +236,67 @@ def test_build_tracks_one_entry_per_frame() -> None:
     assert out[1] == {"index": 1, "timestamp_ms": 100, "red": None, "blue": None}  # skipped
     assert out[2]["red"] == [50.0, 100.0, 150.0, 400.0]  # the more confident box
     assert out[3]["red"] is None  # nobody seen
+
+
+class TestLongShots:
+    """Round 1 of a Tryout broke into 80 to 114 tracks per shot. These are the three
+    errors that caused, rebuilt with synthetic tracks."""
+
+    def test_a_kit_track_overlapping_its_own_corner_is_kept(self) -> None:
+        # The blue fighter's long track (2) overlaps a short blue track (3), for
+        # example a box on the head only. Before, 2 was dropped as a third person.
+        detections = (
+            person(0, 1, range(0, 20), 50, RED_SHORTS, kit=RED_KIT)
+            + person(0, 2, range(0, 20), 400, BLUE_SHORTS, kit=BLUE_KIT)
+            + person(0, 3, range(5, 15), 410, BLUE_SHORTS, kit=BLUE_KIT)
+        )
+        shot = assign_corners(summarise_tracks(detections), CONFIG)["shots"][0]
+        assert (shot["red"], shot["blue"], shot["dropped"]) == ([1], [2, 3], [])
+        assert shot["by_kit"]
+
+    def test_a_fragment_follows_its_kit_not_its_shorts(self) -> None:
+        # Track 3 continues the red fighter, but its shorts band picked up blue.
+        # Before, it could join the blue fighter and swap the corners.
+        detections = (
+            person(0, 1, range(0, 10), 50, RED_SHORTS, kit=RED_KIT)
+            + person(0, 2, range(0, 10), 400, BLUE_SHORTS, kit=BLUE_KIT)
+            + person(0, 3, range(10, 20), 60, BLUE_SHORTS, kit=RED_KIT)
+        )
+        shot = assign_corners(summarise_tracks(detections), CONFIG)["shots"][0]
+        assert (shot["red"], shot["blue"]) == ([1, 3], [2])
+
+    def test_a_small_person_in_the_crowd_is_not_a_fighter(self) -> None:
+        # Track 5 is a spectator behind the ropes, seen after track 1 ends. Before,
+        # it joined track 1 as a fragment because it did not overlap it in time.
+        detections = (
+            person(0, 1, range(0, 10), 50, RED_SHORTS)
+            + person(0, 2, range(0, 20), 400, BLUE_SHORTS)
+            + person(0, 5, range(12, 20), 700, RED_SHORTS, width=25)
+        )
+        fighters, dropped = pick_fighters(summarise_tracks(detections), CONFIG)
+        assert sorted(f["track_ids"] for f in fighters) == [[1], [2]]
+        assert dropped == [5]
+
+    def test_the_size_check_can_be_turned_off(self) -> None:
+        detections = person(0, 1, range(0, 10), 50, RED_SHORTS) + person(
+            0, 5, range(12, 20), 700, RED_SHORTS, width=25
+        )
+        config = TrackConfig(min_track_frames=3, min_fighter_area=0)
+        fighters, dropped = pick_fighters(summarise_tracks(detections), config)
+        assert [f["track_ids"] for f in fighters] == [[1, 5]]
+        assert dropped == []
+
+    def test_the_size_check_counts_the_referee(self) -> None:
+        # The referee (track 9) is the biggest box and is dropped by the filter.
+        # Measured against the fighters only, spectator 5 would pass as a fighter.
+        detections = (
+            person(0, 1, range(0, 10), 50, RED_SHORTS, width=60)
+            + person(0, 2, range(0, 20), 400, BLUE_SHORTS, width=60)
+            + person(0, 9, range(0, 20), 250, REFEREE_SHIRT, width=120)
+            + person(0, 5, range(12, 20), 700, RED_SHORTS, width=30)
+        )
+        fighters, dropped = pick_fighters(
+            summarise_tracks(detections), CONFIG, is_excluded=lambda t: t["track_id"] == 9
+        )
+        assert sorted(f["track_ids"] for f in fighters) == [[1], [2]]
+        assert dropped == [5, 9]

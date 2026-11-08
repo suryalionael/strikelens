@@ -34,6 +34,8 @@ def test_unknown_key_is_an_error(tmp_path: Path) -> None:
         {"min_kit_share": 0},
         {"min_kit_share": 1.5},
         {"kit_min_saturation": -0.1},
+        {"min_fighter_area": -0.1},
+        {"min_fighter_area": 1},
     ],
 )
 def test_bad_values(values: dict[str, object]) -> None:

@@ -18,6 +18,7 @@ class TrackConfig:
     confidence: float = 0.4
     image_size: int = 640
     min_track_frames: int = 5
+    min_fighter_area: float = 0.4
     max_feature_distance: float = 0.5
     kit_corner: bool = True
     min_kit_share: float = 0.25
@@ -39,6 +40,8 @@ class TrackConfig:
             raise ValueError("image_size must be at least 32")
         if self.min_track_frames < 1:
             raise ValueError("min_track_frames must be at least 1")
+        if not 0 <= self.min_fighter_area < 1:
+            raise ValueError("min_fighter_area must be at least 0 and below 1")
         if not 0 < self.max_feature_distance <= 1:
             raise ValueError("max_feature_distance must be above 0 and at most 1")
         if not 0 < self.min_kit_share <= 1:
