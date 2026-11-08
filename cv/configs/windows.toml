@@ -1,0 +1,26 @@
+# Settings for training windows (`strikelens-cv windows`). Safe to commit.
+# Why these values: docs/decisions/0008-training-windows.md.
+
+# A window covers this long before and after a tag's time. The tag time is when
+# the analyst pressed the first key, near the moment of contact.
+before_ms = 600
+after_ms = 400
+
+# Keypoints are sampled at this many evenly spaced times across the window, from
+# the nearest extracted frame. Ingest at 10 fps gives about one frame per sample.
+samples = 16
+
+# A window with more than this share of samples without keypoints is dropped.
+max_missing = 0.25
+
+# Negatives with no strike: this many per positive window, per fight and fighter,
+# from round time at least `negative_gap_ms` away from any tag of that fighter.
+negatives_per_positive = 2
+negative_gap_ms = 1000
+
+# Share of fights held out for validation. Whole fights only, so no fight is in
+# both. Fights are put in a split by a hash of their name, so it never changes.
+validation_share = 0.2
+
+# Seed for sampling negatives, so a rerun gives the same windows.
+seed = 7

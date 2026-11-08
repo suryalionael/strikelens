@@ -13,6 +13,7 @@ from strikelens_cv.pose.config import DEFAULT_POSE_CONFIG
 from strikelens_cv.rounds.config import DEFAULT_ROUNDS_CONFIG
 from strikelens_cv.segments.config import DEFAULT_SEGMENT_CONFIG
 from strikelens_cv.segments.core import in_round
+from strikelens_cv.strikes.config import DEFAULT_WINDOWS_CONFIG
 from strikelens_cv.track.config import DEFAULT_TRACK_CONFIG
 
 if TYPE_CHECKING:
@@ -108,6 +109,21 @@ def build_parser() -> argparse.ArgumentParser:
         description="Run the pose backend on each fighter box from tracks.json and "
         "write keypoints/red.json and keypoints/blue.json to data/processed/<fight>/.",
     )
+    windows = commands.add_parser(
+        "windows",
+        help="training windows from confirmed tags and keypoints",
+        description="Cut keypoint windows around confirmed tags (labelled with the weapon), "
+        "rejected suggestions, and times with no strike, for one or more fights. Writes "
+        "data/labels/windows/<name>/windows.jsonl and manifest.json.",
+    )
+    windows.add_argument(
+        "--fight", action="append", required=True, help="fight name used at ingest (repeat)"
+    )
+    windows.add_argument("--name", required=True, help="name of this window set, e.g. v1")
+    windows.add_argument(
+        "--config", type=Path, default=DEFAULT_WINDOWS_CONFIG, help="TOML settings file"
+    )
+
     pose.add_argument("--fight", required=True, help="fight name used at ingest")
     pose.add_argument("--config", type=Path, default=DEFAULT_POSE_CONFIG, help="TOML settings file")
 
@@ -303,6 +319,26 @@ def run_overlay(args: argparse.Namespace) -> int:
     return 0
 
 
+def run_windows(args: argparse.Namespace) -> int:
+    from strikelens_cv.strikes import build_windows, load_windows_config
+
+    try:
+        result = build_windows(args.name, args.fight, load_windows_config(args.config))
+    except (FileNotFoundError, KeyError, ValueError) as error:
+        print(f"strikelens-cv windows: {error}", file=sys.stderr)
+        return 1
+    for split, labels in result.manifest["counts"].items():
+        parts = ", ".join(f"{label} {count}" for label, count in labels.items())
+        print(f"{split}: {sum(labels.values())} windows ({parts})")
+    splits = set(result.manifest["fights"].values())
+    if len(splits) < 2:
+        print(
+            f"All fights are in {splits.pop() if splits else 'no'} split. Add fights to have both."
+        )
+    print(f"Written to {result.out_dir}")
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -320,6 +356,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return run_referee(args)
     if args.command == "pose":
         return run_pose(args)
+    if args.command == "windows":
+        return run_windows(args)
     if args.command == "overlay":
         return run_overlay(args)
     parser.print_help()
