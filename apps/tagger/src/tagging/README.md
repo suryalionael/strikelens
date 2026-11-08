@@ -23,3 +23,13 @@ Hotkey tagging. See issue #8 and the rules in
 - `history.ts`: pure undo history (50 steps). Undo deletes a new tag, restores a
   deleted tag with the same id and creation time, or reverts an edit.
 - `TagEditor.tsx`: change or delete the selected tag. Delete asks first.
+- `review.ts`: pure review of CV suggestions (#26): which are pending above the
+  confidence filter, stepping to the next or previous by time, the analyst's
+  edits, and the confirm patch (a confirmed tag needs weapon, outcome, and target).
+- `ReviewBar.tsx`: shown when the fight has CV suggestions. Review on: Tab and
+  Shift+Tab jump to the next or previous pending suggestion and play from a second
+  before it; the usual tagging keys and buttons change it instead of starting a new
+  tag; Enter confirms and X rejects, then it moves on. Progress and a confidence
+  filter are shown. A confirmed suggestion keeps `source: cv` and its confidence.
+  Ctrl+Z / Cmd+Z undoes a confirm or reject. Pending and rejected suggestions are
+  left out of the tag count and the latest tags.
