@@ -10,6 +10,19 @@ import { planEdit, revertPatch, type TagEdit } from './edits'
 import { applyKey, INITIAL_TAGGING, type TaggingState } from './engine'
 import { record, undoStep, upsert, without, type TagAction } from './history'
 import { actionFor, DEFAULT_HOTKEYS, hotkeyAction, keyFor, type HotkeyAction } from './hotkeys'
+import {
+  editSuggestion,
+  LEAD_MS,
+  pendingSuggestions,
+  planConfirm,
+  reviewKeyAction,
+  reviewProgress,
+  stepSuggestion,
+  withEdits,
+  type ReviewEdits,
+  type ReviewKey,
+} from './review'
+import { ReviewBar } from './ReviewBar'
 import { TagEditor } from './TagEditor'
 import { buildTag } from './tags'
 import { Timeline } from './Timeline'
@@ -52,7 +65,8 @@ const optionActive =
   'aria-pressed:border-neutral-100 aria-pressed:bg-neutral-100 aria-pressed:text-neutral-950'
 
 function describe(tag: Pick<Tag, 'fighter' | 'weapon' | 'outcome' | 'target'>): string {
-  return [CORNER_LABEL[tag.fighter], tag.weapon, tag.outcome, tag.target].join(' ')
+  // A suggestion can lack an outcome or target, so leave out what is not set.
+  return [CORNER_LABEL[tag.fighter], tag.weapon, tag.outcome, tag.target].filter(Boolean).join(' ')
 }
 
 function describeAt(tag: Tag): string {
@@ -82,7 +96,7 @@ function segmentNote(segments: readonly SegmentDraft[], ms: number): string | nu
 }
 
 export function TagPanel({ fight, rounds, segments = NO_SEGMENTS, onTagsChanged }: Props) {
-  const { src, videoRef } = usePlayer()
+  const { src, videoRef, seek } = usePlayer()
   const [tagging, setTagging] = useState<TaggingState>(INITIAL_TAGGING)
   // Handlers read the latest state from here, so two quick keys never see a stale render.
   const taggingRef = useRef<TaggingState>(INITIAL_TAGGING)
@@ -102,6 +116,13 @@ export function TagPanel({ fight, rounds, segments = NO_SEGMENTS, onTagsChanged 
   const busyRef = useRef(false)
   const fightId = fight?.id ?? null
   const ready = fightId !== null && src !== null
+  // Review mode (#26): keys and option buttons edit the current CV suggestion.
+  const [reviewing, setReviewing] = useState(false)
+  const [minConfidence, setMinConfidence] = useState(0)
+  const [currentId, setCurrentId] = useState<string | null>(null)
+  const [edits, setEdits] = useState<ReviewEdits>({})
+  const pending = pendingSuggestions(tags, minConfidence)
+  const current = reviewing ? (pending.find((t) => t.id === currentId) ?? null) : null
 
   useEffect(() => {
     if (fightId === null) return
@@ -128,6 +149,10 @@ export function TagPanel({ fight, rounds, segments = NO_SEGMENTS, onTagsChanged 
   /** One path for keys and clicks, so both behave the same. */
   const handle = (action: HotkeyAction) => {
     if (fightId === null || src === null) return
+    if (current) {
+      setEdits((e) => editSuggestion(e, action))
+      return
+    }
     const now_ms = Math.round((videoRef.current?.currentTime ?? 0) * 1000)
     const result = applyKey(taggingRef.current, action, now_ms)
     taggingRef.current = result.state
@@ -257,14 +282,58 @@ export function TagPanel({ fight, rounds, segments = NO_SEGMENTS, onTagsChanged 
     })
   }
 
+  /** Move to the next or previous pending suggestion and play from just before it. */
+  const goTo = (
+    direction: 1 | -1,
+    fromMs?: number,
+    skipId: string | null = current?.id ?? null,
+  ) => {
+    const now = fromMs ?? Math.round((videoRef.current?.currentTime ?? 0) * 1000) + LEAD_MS
+    const target = stepSuggestion(pending, now, direction, skipId)
+    setEdits({})
+    setCurrentId(target?.id ?? null)
+    if (target) seek(Math.max(0, target.timestamp_ms - LEAD_MS) / 1000)
+    else setMessage({ kind: 'info', text: 'No suggestions left to review.' })
+  }
+
+  const decide = (tag: Tag, verdict: 'confirm' | 'reject') => {
+    if (fightId === null) return
+    const plan = verdict === 'confirm' ? planConfirm(tag, edits) : null
+    if (plan && !plan.ok) {
+      setMessage({ kind: 'error', text: plan.error })
+      return
+    }
+    const patch = plan ? plan.patch : { status: 'rejected' as const }
+    run(async () => {
+      const saved = await api.updateTag(fightId, tag.id, patch)
+      return () => {
+        setTags((list) => upsert(list, saved))
+        remember({ kind: 'edit', before: tag, after: saved })
+        const what = verdict === 'confirm' ? 'Confirmed' : 'Rejected'
+        setMessage({ kind: 'info', text: `${what} ${describeAt(withEdits(tag, edits))}.` })
+        goTo(1, tag.timestamp_ms, tag.id)
+      }
+    })
+  }
+
+  const review = (key: ReviewKey) => {
+    if (key === 'next' || key === 'previous') {
+      goTo(key === 'next' ? 1 : -1, current?.timestamp_ms)
+    } else if (current) {
+      decide(current, key === 'confirm' ? 'confirm' : 'reject')
+    }
+  }
+
   // The key listener is added once; it always calls the newest `handle` and `undo`.
   // A layout effect refreshes them before React yields, so a key pressed right after
   // the screen changes never reaches a handler from the render before.
   const handleRef = useRef(handle)
   const undoRef = useRef(undo)
+  const reviewRef = useRef<((key: ReviewKey) => void) | null>(null)
   useLayoutEffect(() => {
     handleRef.current = handle
     undoRef.current = undo
+    reviewRef.current = reviewing ? review : null
   })
 
   useEffect(() => {
@@ -273,6 +342,13 @@ export function TagPanel({ fight, rounds, segments = NO_SEGMENTS, onTagsChanged 
       if (isUndoKey(event)) {
         event.preventDefault()
         undoRef.current()
+        return
+      }
+      const reviewKey = reviewRef.current ? reviewKeyAction(event) : null
+      if (reviewKey && reviewRef.current) {
+        // Tab would move the focus; Enter would click a focused button.
+        event.preventDefault()
+        reviewRef.current(reviewKey)
         return
       }
       const action = hotkeyAction(event, DEFAULT_HOTKEYS)
@@ -286,7 +362,16 @@ export function TagPanel({ fight, rounds, segments = NO_SEGMENTS, onTagsChanged 
 
   const { fighter, draft } = tagging
   const selected = tags.find((t) => t.id === selectedId) ?? null
-  const recent = [...tags].sort((a, b) => b.timestamp_ms - a.timestamp_ms).slice(0, RECENT_COUNT)
+  // Pending and rejected suggestions are not the analyst's tags until confirmed.
+  const confirmedTags = tags.filter((t) => t.status === 'confirmed')
+  const recent = [...confirmedTags]
+    .sort((a, b) => b.timestamp_ms - a.timestamp_ms)
+    .slice(0, RECENT_COUNT)
+  const hasSuggestions = tags.some((t) => t.source === 'cv')
+  const shown = current ? withEdits(current, edits) : null
+  // While reviewing, the option buttons show and set the current suggestion.
+  const shownFighter = shown ? shown.fighter : fighter
+  const shownValue = (field: Field) => (shown ? shown[field] : draft[field])
 
   return (
     <section
@@ -295,7 +380,7 @@ export function TagPanel({ fight, rounds, segments = NO_SEGMENTS, onTagsChanged 
     >
       <div className="flex items-baseline justify-between">
         <h2 className="font-semibold">Tagging</h2>
-        <span className="text-xs text-neutral-500">{tags.length} tags</span>
+        <span className="text-xs text-neutral-500">{confirmedTags.length} tags</span>
       </div>
 
       {!fightId && (
@@ -312,6 +397,26 @@ export function TagPanel({ fight, rounds, segments = NO_SEGMENTS, onTagsChanged 
           segments={segments}
           selectedId={selectedId}
           onSelect={setSelectedId}
+        />
+      )}
+
+      {ready && hasSuggestions && (
+        <ReviewBar
+          reviewing={reviewing}
+          current={shown}
+          pendingCount={pending.length}
+          progress={reviewProgress(tags, minConfidence)}
+          minConfidence={minConfidence}
+          busy={busy}
+          onToggle={() => {
+            setReviewing((on) => !on)
+            setCurrentId(null)
+            setEdits({})
+          }}
+          onMinConfidence={setMinConfidence}
+          onStep={(direction) => goTo(direction, current?.timestamp_ms)}
+          onConfirm={() => review('confirm')}
+          onReject={() => review('reject')}
         />
       )}
 
@@ -334,7 +439,7 @@ export function TagPanel({ fight, rounds, segments = NO_SEGMENTS, onTagsChanged 
                 <button
                   key={corner}
                   type="button"
-                  aria-pressed={fighter === corner}
+                  aria-pressed={shownFighter === corner}
                   aria-keyshortcuts={keyFor('fighter', corner) ?? undefined}
                   onClick={() => {
                     const action = actionFor('fighter', corner)
@@ -349,20 +454,26 @@ export function TagPanel({ fight, rounds, segments = NO_SEGMENTS, onTagsChanged 
                 </button>
               ))}
             </div>
-            <p aria-label="Current tag" className="text-sm text-neutral-400">
-              {fighter ? (
-                <span className={CORNER_TEXT[fighter]}>{CORNER_LABEL[fighter]}</span>
-              ) : (
-                'No fighter'
-              )}
-              {' · '}
-              {draft.weapon ?? '—'} · {draft.outcome ?? '—'} · {draft.target ?? '—'}
-              <span className="ml-2 text-neutral-500">
-                {draft.started_ms === null
-                  ? 'Press a key or click to start a tag'
-                  : `at ${formatTime(draft.started_ms / 1000)}`}
-              </span>
-            </p>
+            {current ? (
+              <p className="text-sm text-amber-200/80">
+                Reviewing: keys and buttons change the suggestion above.
+              </p>
+            ) : (
+              <p aria-label="Current tag" className="text-sm text-neutral-400">
+                {fighter ? (
+                  <span className={CORNER_TEXT[fighter]}>{CORNER_LABEL[fighter]}</span>
+                ) : (
+                  'No fighter'
+                )}
+                {' · '}
+                {draft.weapon ?? '—'} · {draft.outcome ?? '—'} · {draft.target ?? '—'}
+                <span className="ml-2 text-neutral-500">
+                  {draft.started_ms === null
+                    ? 'Press a key or click to start a tag'
+                    : `at ${formatTime(draft.started_ms / 1000)}`}
+                </span>
+              </p>
+            )}
             {draft.started_ms !== null && (
               <button
                 type="button"
@@ -385,7 +496,7 @@ export function TagPanel({ fight, rounds, segments = NO_SEGMENTS, onTagsChanged 
                       <button
                         key={value}
                         type="button"
-                        aria-pressed={draft[field] === value}
+                        aria-pressed={shownValue(field) === value}
                         aria-keyshortcuts={keyFor(field, value) ?? undefined}
                         disabled={action === null}
                         onClick={() => {

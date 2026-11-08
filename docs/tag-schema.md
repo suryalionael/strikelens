@@ -102,7 +102,7 @@ One key per choice, no modifiers, so the analyst can keep one hand on the keyboa
 | **Fighter** | |
 | Red | `Q` |
 | Blue | `W` |
-| **Suggestions** | |
+| **Suggestions** (with Review suggestions on) | |
 | Confirm suggestion | `Enter` |
 | Reject suggestion | `X` |
 | Next suggestion | `Tab` |
@@ -118,6 +118,11 @@ One key per choice, no modifiers, so the analyst can keep one hand on the keyboa
 The player also has a seek bar over the whole video and a **Go to** field that
 takes `m:ss` or `h:mm:ss`. The usual video-site keys (`J`, `L`, `0`-`9`) are
 tagging keys here, so jumps use `Shift` and `Alt` with the arrows.
+
+The suggestion keys work while **Review suggestions** is on. Then the weapon,
+outcome, target, and fighter keys change the current suggestion instead of
+starting a new tag. A suggestion is confirmed only with a weapon, an outcome, and
+a target, and keeps `source: cv` and its `confidence`.
 
 ### How a tag is entered
 

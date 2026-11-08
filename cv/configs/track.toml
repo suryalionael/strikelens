@@ -20,6 +20,18 @@ min_track_frames = 5
 # missing (1 before). 0 turns the check off.
 min_fighter_area = 0.4
 
+# Splitting tracks (#64). When two people overlap, ByteTrack can pass one ID from
+# a fighter to the referee, or from red to blue. A track is cut where the median
+# of the `split_window` samples before and after differs by more than
+# `split_kit_jump` in red-minus-blue kit share or `split_dark_jump` in dark share,
+# or where its box jumps sideways by more than `split_move` box widths.
+# On held-out labels from a Tryout round this took red and blue from 17 right,
+# 3 wrong, 1 missing to 21 of 21 right. Measured while tracking: needs `track`.
+split_window = 5
+split_kit_jump = 0.3
+split_dark_jump = 0.35
+split_move = 0.6
+
 # Colour distance (0 = same, 1 = nothing in common) above which a shot's match to
 # the red and blue references is marked uncertain and not used to update them.
 max_feature_distance = 0.5
