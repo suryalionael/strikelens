@@ -92,6 +92,10 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - A fast second `Ctrl+Z` / `Cmd+Z` could undo the same step twice (#47).
 - A round mark changed while its save was still in flight could be left unsaved,
   and a round save could undo a segment save made just before it (#18).
+- Tracking boxed the referee as a fighter and missed the red kit on Byon footage.
+  The kit and referee colour thresholds are now calibrated on labelled boxes from
+  a Tryout and a Madness fight (ADR 0006): red kit from 320 degrees,
+  `dark_max_value` 100, `min_kit_share` 0.25 (#19, #20).
 
 ## [0.0.1] - 2026-11-03
 
