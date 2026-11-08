@@ -92,6 +92,13 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Round suggestions: ingest finds when the broadcast scoreboard is on screen and
   writes `round-suggestions.json`. The tagger lists the rounds to check and uses
   them in one click. Rounds that end early are marked to check (ADR 0007) (#35).
+- Review mode for CV suggestions: Tab and Shift+Tab jump between pending suggestions,
+  the usual keys change the current one, Enter confirms, X rejects, and Ctrl+Z
+  undoes. With progress and a confidence filter. Confirmed suggestions keep
+  `source: cv` (#26).
+- Training windows: `strikelens-cv windows` cuts keypoint windows around confirmed
+  tags, rejected suggestions, and times with no strike, split by whole fight
+  (ADR 0008) (#23).
 
 ### Fixed
 
@@ -105,6 +112,9 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - In long camera shots, tracking could drop a fighter, swap red and blue, or box a
   spectator. Tracks now join a corner by their own kit, and tracks much smaller
   than the biggest person in the shot are dropped (`min_fighter_area`) (#19).
+- A track ID that ByteTrack passed from one person to another put a corner's box on
+  the wrong person. Tracks are now cut where the kit, the dark share, or the box
+  position jumps (#64).
 
 ## [0.0.1] - 2026-11-03
 
