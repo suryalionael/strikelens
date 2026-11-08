@@ -89,6 +89,9 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Video navigation: a seek bar over the whole video with the time under the
   pointer, a Go to field (`m:ss` or `h:mm:ss`), and jump keys: Shift+arrows for
   5 s and Alt+arrows for 30 s (#60).
+- Round suggestions: ingest finds when the broadcast scoreboard is on screen and
+  writes `round-suggestions.json`. The tagger lists the rounds to check and uses
+  them in one click. Rounds that end early are marked to check (ADR 0007) (#35).
 
 ### Fixed
 
