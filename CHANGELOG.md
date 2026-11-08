@@ -86,6 +86,9 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   Output stays in `data/processed/` (#22).
 - Fight rules: `docs/rules.md` summarises the UCC Kickstriking rules Byon fights
   under. Open questions 13 and 14 were added for Freefly (#54).
+- Video navigation: a seek bar over the whole video with the time under the
+  pointer, a Go to field (`m:ss` or `h:mm:ss`), and jump keys: Shift+arrows for
+  5 s and Alt+arrows for 30 s (#60).
 
 ### Fixed
 
@@ -96,6 +99,9 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   The kit and referee colour thresholds are now calibrated on labelled boxes from
   a Tryout and a Madness fight (ADR 0006): red kit from 320 degrees,
   `dark_max_value` 100, `min_kit_share` 0.25 (#19, #20).
+- In long camera shots, tracking could drop a fighter, swap red and blue, or box a
+  spectator. Tracks now join a corner by their own kit, and tracks much smaller
+  than the biggest person in the shot are dropped (`min_fighter_area`) (#19).
 
 ## [0.0.1] - 2026-11-03
 
