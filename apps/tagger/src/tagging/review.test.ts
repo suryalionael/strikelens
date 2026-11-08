@@ -127,6 +127,14 @@ describe('editing and confirming a suggestion', () => {
     expect(plan.ok && plan.patch).toMatchObject({ weapon: 'teep', fighter: 'blue' })
   })
 
+  it('names all three when nothing is set', () => {
+    const plan = planConfirm(cv('a', 0, 1, { weapon: null }), {})
+    expect(plan).toEqual({
+      ok: false,
+      error: 'Set the weapon, outcome, and target first, then press Enter.',
+    })
+  })
+
   it('names a missing weapon too', () => {
     const plan = planConfirm(cv('a', 0, 1, { weapon: null }), { outcome: 'landed' })
     expect(plan).toEqual({ ok: false, error: 'Set the weapon and target first, then press Enter.' })

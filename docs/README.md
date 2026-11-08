@@ -45,3 +45,4 @@ next number.
 | [0006](decisions/0006-track-colour-calibration.md) | Kit and referee colour thresholds calibrated on Byon footage |
 | [0007](decisions/0007-round-suggestions.md) | Round suggestions from scoreboard presence, not clock OCR |
 | [0008](decisions/0008-training-windows.md) | Training windows: 1 s around the tag, 16 samples, box-normalised |
+| [0009](decisions/0009-strike-suggestions.md) | Strike suggestions: peaks in a score, with a motion baseline until a trained model exists |

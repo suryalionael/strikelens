@@ -14,6 +14,7 @@ from strikelens_cv.rounds.config import DEFAULT_ROUNDS_CONFIG
 from strikelens_cv.segments.config import DEFAULT_SEGMENT_CONFIG
 from strikelens_cv.segments.core import in_round
 from strikelens_cv.strikes.config import DEFAULT_WINDOWS_CONFIG
+from strikelens_cv.strikes.suggest import DEFAULT_INFER_CONFIG
 from strikelens_cv.track.config import DEFAULT_TRACK_CONFIG
 
 if TYPE_CHECKING:
@@ -122,6 +123,29 @@ def build_parser() -> argparse.ArgumentParser:
     windows.add_argument("--name", required=True, help="name of this window set, e.g. v1")
     windows.add_argument(
         "--config", type=Path, default=DEFAULT_WINDOWS_CONFIG, help="TOML settings file"
+    )
+
+    strikes = commands.add_parser(
+        "suggest-strikes",
+        help="suggest strikes for the analyst to review (pending CV tags)",
+        description="Score each fighter's keypoints inside the marked rounds with the model in "
+        "configs/infer.toml, and turn score peaks into pending CV tags. Writes "
+        "strike-suggestions.json; with --post, also adds them to the fight in the API.",
+    )
+    strikes.add_argument("--fight", required=True, help="fight name used at ingest")
+    strikes.add_argument(
+        "--config", type=Path, default=DEFAULT_INFER_CONFIG, help="TOML settings file"
+    )
+    strikes.add_argument(
+        "--windows-config",
+        type=Path,
+        default=DEFAULT_WINDOWS_CONFIG,
+        help="window shape, as used for training",
+    )
+    strikes.add_argument(
+        "--post",
+        metavar="API_URL",
+        help="also add them to the API as pending tags, e.g. http://localhost:8000",
     )
 
     pose.add_argument("--fight", required=True, help="fight name used at ingest")
@@ -339,6 +363,30 @@ def run_windows(args: argparse.Namespace) -> int:
     return 0
 
 
+def run_suggest_strikes(args: argparse.Namespace) -> int:
+    from strikelens_cv.strikes import load_windows_config
+    from strikelens_cv.strikes.suggest import load_infer_config, suggest_strikes
+
+    try:
+        result = suggest_strikes(
+            args.fight,
+            load_windows_config(args.windows_config),
+            load_infer_config(args.config),
+            args.post,
+        )
+    except (FileNotFoundError, KeyError, ValueError) as error:
+        print(f"strikelens-cv suggest-strikes: {error}", file=sys.stderr)
+        return 1
+    per_corner = {c: sum(1 for t in result.tags if t["fighter"] == c) for c in ("red", "blue")}
+    print(
+        f"{len(result.tags)} suggestions (red {per_corner['red']}, blue {per_corner['blue']}). "
+        f"Written to {result.path}"
+    )
+    if result.posted is not None:
+        print(f"{result.posted} added to the API as pending tags. Review them in the tagger.")
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -358,6 +406,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return run_pose(args)
     if args.command == "windows":
         return run_windows(args)
+    if args.command == "suggest-strikes":
+        return run_suggest_strikes(args)
     if args.command == "overlay":
         return run_overlay(args)
     parser.print_help()
