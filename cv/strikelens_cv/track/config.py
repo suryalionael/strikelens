@@ -19,6 +19,10 @@ class TrackConfig:
     image_size: int = 640
     min_track_frames: int = 5
     min_fighter_area: float = 0.4
+    split_window: int = 5
+    split_kit_jump: float = 0.3
+    split_dark_jump: float = 0.35
+    split_move: float = 0.6
     max_feature_distance: float = 0.5
     kit_corner: bool = True
     min_kit_share: float = 0.25
@@ -40,6 +44,13 @@ class TrackConfig:
             raise ValueError("image_size must be at least 32")
         if self.min_track_frames < 1:
             raise ValueError("min_track_frames must be at least 1")
+        if self.split_window < 1:
+            raise ValueError("split_window must be at least 1")
+        for name in ("split_kit_jump", "split_dark_jump"):
+            if not 0 < getattr(self, name) <= 2:
+                raise ValueError(f"{name} must be above 0 and at most 2")
+        if self.split_move <= 0:
+            raise ValueError("split_move must be above 0")
         if not 0 <= self.min_fighter_area < 1:
             raise ValueError("min_fighter_area must be at least 0 and below 1")
         if not 0 < self.max_feature_distance <= 1:
