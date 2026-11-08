@@ -10,6 +10,9 @@ round starts and ends in the video. See issue #7.
   open fight.
 - `RoundMarker.tsx`: marks rounds at the player's current time and saves them with
   `PUT /fights/{id}` whenever they are valid. A round is saved once it has an end.
+- `roundSuggestions.ts`: reads `round-suggestions.json` from `strikelens-cv ingest`.
+  `RoundMarker.tsx` lists them with ▶ buttons to check each start and end, and
+  uses them as the rounds in one click.
 - `segments.ts`: pure segment marking and validation (end after start, no overlap).
 - `suggestions.ts`: reads `segment-suggestions.json` from `strikelens-cv ingest`.
 - `SegmentMarker.tsx`: marks replays and non-fight shots the same way, and lists

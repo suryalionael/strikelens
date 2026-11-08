@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, type ChangeEvent } from 'react'
 import { api, fightInput } from '../api/client'
 import type { Fight, Segment } from '../api/types'
 import { usePlayer } from '../player/PlayerContext'
@@ -13,6 +13,7 @@ import {
   startRound,
   type RoundDraft,
 } from './rounds'
+import { parseRoundSuggestions, type RoundSuggestion } from './roundSuggestions'
 import { button, primaryButton } from './styles'
 import { TimeField } from './TimeField'
 
@@ -31,6 +32,8 @@ interface Props {
 export function RoundMarker({ fight, rounds, segments, onRoundsChange, onSaved }: Props) {
   const { currentTime, src, seek } = usePlayer()
   const [save, setSave] = useState<SaveState>({ kind: 'saved' })
+  const [suggestions, setSuggestions] = useState<RoundSuggestion[] | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
   // Only the newest save may update the status, in case responses arrive out of order.
   const latestSave = useRef(0)
   // What was last sent, not what was last saved, so a change made while a save is
@@ -62,6 +65,26 @@ export function RoundMarker({ fight, rounds, segments, onRoundsChange, onSaved }
         lastSent.current = null
         setSave({ kind: 'failed', message: error instanceof Error ? error.message : String(error) })
       })
+  }
+
+  const loadSuggestions = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.currentTarget.files?.[0]
+    event.currentTarget.value = ''
+    if (!file) return
+    file
+      .text()
+      .then((text) => {
+        setSuggestions(parseRoundSuggestions(text))
+        setLoadError(null)
+      })
+      .catch((error: unknown) => {
+        setLoadError(error instanceof Error ? error.message : String(error))
+      })
+  }
+
+  const acceptSuggestions = (list: RoundSuggestion[]) => {
+    apply(list.map(({ number, start_ms, end_ms }) => ({ number, start_ms, end_ms })))
+    setSuggestions(null)
   }
 
   const status =
@@ -170,6 +193,74 @@ export function RoundMarker({ fight, rounds, segments, onRoundsChange, onSaved }
           <button type="button" className={button} onClick={() => apply(removeLastRound(rounds))}>
             Remove round {rounds.length}
           </button>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-2 border-t border-neutral-800 pt-3">
+        <label className="flex flex-col gap-1 text-xs text-neutral-400">
+          Load round suggestions (round-suggestions.json from strikelens-cv ingest)
+          <input
+            type="file"
+            accept="application/json,.json"
+            className="text-xs text-neutral-300 file:mr-2 file:rounded file:border file:border-neutral-700 file:bg-transparent file:px-2 file:py-1 file:text-neutral-200"
+            onChange={loadSuggestions}
+          />
+        </label>
+        {loadError && (
+          <p role="alert" className="text-xs text-red-400">
+            {loadError}
+          </p>
+        )}
+        {suggestions !== null && suggestions.length === 0 && (
+          <p className="text-xs text-neutral-500">
+            No rounds found from the scoreboard. Mark them by hand.
+          </p>
+        )}
+        {suggestions !== null && suggestions.length > 0 && (
+          <>
+            <ul aria-label="Suggested rounds" className="flex flex-col gap-1 text-xs">
+              {suggestions.map((s) => (
+                <li key={s.number} className="flex flex-wrap items-baseline gap-x-2">
+                  <span className="font-medium">
+                    Round {s.number}: {formatTime(s.start_ms / 1000)} to{' '}
+                    {formatTime(s.end_ms / 1000)}
+                  </span>
+                  {s.partial && <span className="text-amber-400">check the end</span>}
+                  <button
+                    type="button"
+                    className="text-neutral-400 hover:text-neutral-100 disabled:opacity-40"
+                    disabled={src === null}
+                    aria-label={`Watch the start of suggested round ${s.number}`}
+                    onClick={() => seek(s.start_ms / 1000)}
+                  >
+                    ▶ start
+                  </button>
+                  <button
+                    type="button"
+                    className="text-neutral-400 hover:text-neutral-100 disabled:opacity-40"
+                    disabled={src === null}
+                    aria-label={`Watch the end of suggested round ${s.number}`}
+                    onClick={() => seek(s.end_ms / 1000)}
+                  >
+                    ▶ end
+                  </button>
+                  {s.reason && <span className="w-full text-neutral-500">{s.reason}</span>}
+                </li>
+              ))}
+            </ul>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className={primaryButton}
+                onClick={() => acceptSuggestions(suggestions)}
+              >
+                {rounds.length > 0 ? 'Replace the marked rounds with these' : 'Use these rounds'}
+              </button>
+              <button type="button" className={button} onClick={() => setSuggestions(null)}>
+                Dismiss
+              </button>
+            </div>
+          </>
         )}
       </div>
     </section>

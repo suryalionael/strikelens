@@ -80,6 +80,8 @@ Stages run in order. Each stage reads from and writes to `data/processed/`.
    (`segment-suggestions.json`). The analyst loads them in the tagger, accepts or
    dismisses each, and marks other replays and non-fight shots by hand. Segments
    are saved on the fight. Later stages call `frames_outside` so they skip them.
+   Ingest also suggests rounds from when the broadcast scoreboard is on screen
+   (`round-suggestions.json`), for the analyst to accept in the tagger.
 2. **Track:** YOLO detects people. ByteTrack links detections within each shot. A
    pure assignment step keeps two fighters per shot and matches them to red and
    blue across cuts by the colour of their shorts. Corrections fix it by hand.

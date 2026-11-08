@@ -84,6 +84,40 @@ frames = frames_outside(manifest["frames"], segments)
 generates itself. It skips unless FFmpeg and the `ingest` extra are installed, so
 it does not run in CI.
 
+## Round suggestions
+
+Ingest also writes `round-suggestions.json`, so the analyst does not have to find
+each round by hand. During a round, Byon broadcasts show a scoreboard (event
+logo, round, clock, names); between rounds it is hidden. Load the file in the
+tagger (Rounds, Load round suggestions), check each round with the ▶ buttons, and
+click Use these rounds.
+
+How it works:
+
+1. One frame a second, the bottom left of the frame (`scoreboard_region`) is cut
+   into a grid of patches. The patch that looks the same in the most frames is
+   taken as the scoreboard's logo, because the live video behind it keeps
+   changing. No template is stored: Byon's graphics are not ours to commit.
+2. Stretches where it shows become rounds. Gaps under `max_gap_ms` (15 s) are
+   bridged, and stretches under `min_round_ms` (20 s) are dropped.
+3. A round runs `round_ms` (3 minutes on the clock, see docs/rules.md) from when
+   the scoreboard appears. The broadcast can hide it for the last seconds, so if
+   it goes away less than `max_hidden_tail_ms` (20 s) before that, the round runs
+   its full length. If it goes away earlier, the round ends there and is marked
+   to check: usually a stoppage.
+
+A round that ends early and is followed by a stretch that makes up the rest of
+its 3 minutes is one round with a pause, such as a doctor's check. On five
+practice fights it found every round; see ADR 0007 for the results. To redo it without extracting frames again:
+
+```bash
+uv run strikelens-cv rounds --fight "Byon 40 main event"
+```
+
+Known limits: a scoreboard somewhere else on screen needs `scoreboard_region`
+changed in `configs/rounds.toml`. A clock stopped for a foul makes a round longer
+than 3 minutes of video; that is kept as long as the scoreboard stays.
+
 ## Track
 
 Finds the two fighters in every frame and keeps them red and blue. Needs the

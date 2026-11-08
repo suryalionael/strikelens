@@ -150,6 +150,48 @@ describe('FightSetup: new fight', () => {
 })
 
 describe('FightSetup: marking rounds', () => {
+  it('loads round suggestions and uses them as the rounds', async () => {
+    renderSetup(fakePlayer(), savedFight())
+    const suggestions = {
+      suggestions: [
+        { number: 1, start_ms: 179_000, end_ms: 359_000, partial: false, reason: 'Scoreboard' },
+        { number: 2, start_ms: 425_000, end_ms: 487_000, partial: true, reason: 'Stoppage?' },
+      ],
+    }
+    const file = new File([JSON.stringify(suggestions)], 'round-suggestions.json')
+    fireEvent.change(screen.getByLabelText(/Load round suggestions/), { target: { files: [file] } })
+
+    const list = await screen.findByRole('list', { name: 'Suggested rounds' })
+    expect(within(list).getAllByRole('listitem')).toHaveLength(2)
+    expect(within(list).getByText('check the end')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Use these rounds' }))
+
+    await waitFor(() =>
+      expect(vi.mocked(api.replaceFight).mock.lastCall?.[1].rounds).toEqual([
+        { number: 1, start_ms: 179_000, end_ms: 359_000 },
+        { number: 2, start_ms: 425_000, end_ms: 487_000 },
+      ]),
+    )
+    expect(screen.queryByRole('list', { name: 'Suggested rounds' })).toBeNull()
+    expect(screen.getByLabelText('Round 2 end')).toHaveValue('08:07.000')
+  })
+
+  it('offers to replace rounds already marked, and explains a wrong file', async () => {
+    renderSetup(fakePlayer(), savedFight([{ number: 1, start_ms: 0, end_ms: 180_000 }]))
+    const good = new File(
+      [JSON.stringify({ suggestions: [{ number: 1, start_ms: 1000, end_ms: 181_000 }] })],
+      'round-suggestions.json',
+    )
+    fireEvent.change(screen.getByLabelText(/Load round suggestions/), { target: { files: [good] } })
+    expect(
+      await screen.findByRole('button', { name: 'Replace the marked rounds with these' }),
+    ).toBeInTheDocument()
+
+    const bad = new File(['{"shots": []}'], 'cuts.json')
+    fireEvent.change(screen.getByLabelText(/Load round suggestions/), { target: { files: [bad] } })
+    expect(await screen.findByRole('alert')).toHaveTextContent('No "suggestions" list')
+  })
+
   it('marks start and end at the player time and saves the finished round', async () => {
     const { setTime } = renderSetup(fakePlayer({ currentTime: 1 }), savedFight())
 

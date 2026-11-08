@@ -11,6 +11,8 @@ from strikelens_cv.ingest.config import IngestConfig
 from strikelens_cv.ingest.cuts import Shot, detect_scenes, shots_from_scenes
 from strikelens_cv.ingest.frames import FrameEntry, extract_frames
 from strikelens_cv.paths import processed_dir
+from strikelens_cv.rounds.config import RoundsConfig
+from strikelens_cv.rounds.run import write_round_suggestions
 from strikelens_cv.segments.config import SegmentConfig
 from strikelens_cv.segments.run import write_suggestions
 
@@ -32,8 +34,12 @@ def ingest(
     config: IngestConfig,
     overwrite: bool = False,
     segment_config: SegmentConfig | None = None,
+    rounds_config: RoundsConfig | None = None,
 ) -> IngestResult:
-    """Extract frames, find cuts, and suggest replays. Output goes to data/processed/<fight>/."""
+    """Extract frames, find cuts, and suggest replays and rounds.
+
+    Output goes to data/processed/<fight>/.
+    """
     if not video.is_file():
         raise FileNotFoundError(f"video not found: {video}")
     out_dir = processed_dir(fight)
@@ -51,6 +57,7 @@ def ingest(
     _write_json(out_dir / "frames.json", {"fps": config.fps, "frames": frames})
     _write_json(out_dir / "cuts.json", {"duration_ms": duration_ms, "shots": shots})
     write_suggestions(out_dir, shots, segment_config or SegmentConfig())
+    write_round_suggestions(out_dir, frames, duration_ms, rounds_config or RoundsConfig())
     _write_json(
         out_dir / "ingest.json",
         {

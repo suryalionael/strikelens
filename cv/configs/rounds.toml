@@ -1,0 +1,35 @@
+# Settings for round suggestions (`strikelens-cv rounds`, also run by ingest).
+# Suggestions are only hints: the analyst checks them in the tagger and accepts.
+
+# During a round, Byon broadcasts show a scoreboard (event logo, round, clock,
+# names). It is hidden between rounds. The detector looks for it inside this part
+# of the frame: [left, top, right, bottom] as shares of the width and height.
+# The default covers the bottom left, where Tryout and Madness put it.
+scoreboard_region = [0.02, 0.62, 0.45, 0.97]
+
+# The region is cut into a grid of patches. The patch that looks the same in the
+# most frames is taken as the scoreboard (its logo cell): live video behind the
+# scoreboard changes all the time, the logo does not. No template is stored.
+grid = [6, 4]
+
+# Lowest similarity (normalised correlation, 0 to 1) to the scoreboard patch for
+# the scoreboard to count as on screen.
+match = 0.9
+
+# Check one frame in this many milliseconds.
+sample_ms = 1000
+
+# Round length on the clock (UCC Kickstriking: 3 minutes, see docs/rules.md).
+round_ms = 180000
+
+# Gaps shorter than this inside a round are bridged (the graphic can blink off).
+max_gap_ms = 15000
+
+# A stretch of scoreboard shorter than this is not a round.
+min_round_ms = 20000
+
+# The broadcast can hide the scoreboard for the last seconds of a round. If it
+# goes away at most this long before the clock would reach 0:00, the round is
+# taken to run its full length. If it goes away earlier, the round is suggested
+# as ending there: a stoppage, or a round to check.
+max_hidden_tail_ms = 20000

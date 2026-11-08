@@ -43,3 +43,4 @@ next number.
 | [0004](decisions/0004-pose-library.md) | MediaPipe for pose in v1, RTMPose as the upgrade path |
 | [0005](decisions/0005-fighter-hotkeys.md) | Fighter hotkeys: `Q` for red, `W` for blue |
 | [0006](decisions/0006-track-colour-calibration.md) | Kit and referee colour thresholds calibrated on Byon footage |
+| [0007](decisions/0007-round-suggestions.md) | Round suggestions from scoreboard presence, not clock OCR |
