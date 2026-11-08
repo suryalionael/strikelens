@@ -110,10 +110,16 @@ How it works:
    (see Replays above). Without rounds, the whole video is tracked, walkouts and
    crowd shots included, and the command warns about it. After changing the
    rounds, run `track` again; `assign` alone is not enough.
-2. Tracks that look like the referee are dropped (see Referee filter). In each
-   shot, the two strongest remaining tracks are the fighters. A track that never
-   overlaps a fighter in time is treated as the same fighter under a new ID. A
-   third person overlapping both is dropped.
+2. Tracks that look like the referee are dropped (see Referee filter), and so
+   are tracks much smaller than the biggest one in the shot, the referee included
+   (`min_fighter_area`, 0.4 of its box area), which keeps out the crowd behind the ropes. A track
+   whose own chest shows clear red or blue kit joins that corner, even when it
+   overlaps another track of the same corner (see Kit colour). Of the rest, the
+   two strongest tracks in each shot are the fighters. A track that never
+   overlaps a fighter in time is treated as the same fighter under a new ID,
+   unless its kit says the other corner. A third person overlapping both is
+   dropped. Long shots break into many short tracks, so these rules matter most
+   there.
 3. Across shots, fighters are matched to red and blue. A fighter in clearly red
    or blue kit takes that corner (see Kit colour). Everyone else is matched by
    the colour of their shorts: a hue and saturation histogram of the middle of
