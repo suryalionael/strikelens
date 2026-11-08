@@ -1,0 +1,18 @@
+# Settings for strike suggestions (`strikelens-cv suggest-strikes`). Safe to commit.
+# Windows have the shape set in windows.toml, so the model sees what it learned on.
+
+# Which model scores the windows. "motion-baseline" needs no training: it scores
+# how fast the wrists, elbows, knees, and ankles move. It is a stand-in until a
+# trained model (#24) exists, and the baseline that model has to beat.
+model = "motion-baseline"
+
+# A window is scored every this many milliseconds, for each fighter.
+stride_ms = 100
+
+# A suggestion is a peak in a fighter's score at or above this (0 to 1). Not
+# calibrated on tagged fights yet: on the Tryout 2 rounds, 0.9 and 700 ms gave
+# about 24 suggestions a minute for both fighters together.
+threshold = 0.9
+
+# Two suggestions for one fighter are at least this far apart; the higher peak wins.
+min_gap_ms = 700
