@@ -69,6 +69,9 @@ class Fighter(TypedDict):
     corner: Corner | None  # set only by a correction
     kit_red: float | None
     kit_blue: float | None
+    # Set when the fighter was built from tracks whose own kit is clearly this
+    # corner. The fighter's mean kit can be diluted by fragments without kit.
+    kit: NotRequired[Corner | None]
 
 
 class ShotResult(TypedDict):
@@ -161,9 +164,12 @@ def _kit_mean(tracks: Sequence[TrackSummary], key: KitShare) -> float | None:
     return sum(share * frames for share, frames in pairs) / total if total else None
 
 
-def _fighter(tracks: Sequence[TrackSummary], corner: Corner | None) -> Fighter:
+def _fighter(
+    tracks: Sequence[TrackSummary], corner: Corner | None, kit: Corner | None = None
+) -> Fighter:
     weights = [float(t["frames"]) for t in tracks]
     return {
+        "kit": kit,
         "track_ids": sorted(t["track_id"] for t in tracks),
         "frames": sum(t["frames"] for t in tracks),
         "mean_x": sum(t["mean_x"] * t["frames"] for t in tracks) / sum(weights),
@@ -176,7 +182,17 @@ def _fighter(tracks: Sequence[TrackSummary], corner: Corner | None) -> Fighter:
 
 def fighter_kit(fighter: Fighter, config: TrackConfig) -> Corner | None:
     """The corner a fighter's kit says, or None when it is not clearly red or blue."""
-    red, blue = fighter["kit_red"], fighter["kit_blue"]
+    return fighter.get("kit") or _kit_says(fighter["kit_red"], fighter["kit_blue"], config)
+
+
+def track_kit(track: TrackSummary, config: TrackConfig) -> Corner | None:
+    """The corner one track's own kit says. None when the kit is off or unclear."""
+    if not config.kit_corner:
+        return None
+    return _kit_says(track["torso_red"], track["torso_blue"], config)
+
+
+def _kit_says(red: float | None, blue: float | None, config: TrackConfig) -> Corner | None:
     if red is None or blue is None:
         return None
     if red - blue >= config.min_kit_share:
@@ -184,6 +200,34 @@ def fighter_kit(fighter: Fighter, config: TrackConfig) -> Corner | None:
     if blue - red >= config.min_kit_share:
         return "blue"
     return None
+
+
+def _kit_trusted(
+    free: Sequence[TrackSummary], pinned: dict[Corner, list[TrackSummary]], config: TrackConfig
+) -> bool:
+    """Whether the kit can be trusted in this shot at all.
+
+    Not when a correction pins a track to the corner its own kit contradicts, and
+    not when two people in the same kit are on screen together while nobody wears
+    the other corner's kit (an event where the kit does not match the corner).
+    """
+    for corner, members in pinned.items():
+        if any((kit := track_kit(t, config)) is not None and kit != corner for t in members):
+            return False
+    by_kit: dict[Corner, list[TrackSummary]] = {"red": [], "blue": []}
+    for t in free:
+        if (kit := track_kit(t, config)) is not None:
+            by_kit[kit].append(t)
+    for corner, other in (("red", "blue"), ("blue", "red")):
+        same = by_kit[corner]
+        together = any(
+            _overlaps((a["first_frame"], a["last_frame"]), (b["first_frame"], b["last_frame"]))
+            for i, a in enumerate(same)
+            for b in same[i + 1 :]
+        )
+        if together and not by_kit[other]:
+            return False
+    return True
 
 
 def pick_fighters(
@@ -194,12 +238,19 @@ def pick_fighters(
 ) -> tuple[list[Fighter], list[int]]:
     """At most two fighters in one shot, and the track IDs left out.
 
-    Corrections come first: "none" drops a track, "red" or "blue" pins it. Then the
-    strongest remaining tracks (frames seen x mean box size) are added. A track that
-    never overlaps a fighter in time is taken as a fragment of that fighter (ByteTrack
-    often starts a new ID mid-shot). A track that overlaps both fighters is a third
-    person, often the referee, and is dropped. `is_excluded` is where the referee
-    filter (#20) plugs in.
+    Corrections come first: "none" drops a track, "red" or "blue" pins it. Tracks
+    seen too briefly, excluded by the referee filter (`is_excluded`), or much
+    smaller than the biggest track in the shot (`min_fighter_area`, which keeps
+    out the crowd behind the ropes) are dropped.
+
+    Then the kit: a track whose own chest is clearly red or blue joins that
+    corner, even when it overlaps other tracks of the same corner in time
+    (`build_tracks` keeps one box per corner per frame).
+
+    The rest are added strongest first (frames seen x mean box size). A track that
+    never overlaps a fighter in time is taken as a fragment of that fighter
+    (ByteTrack often starts a new ID mid-shot), unless its kit says the other
+    corner. A track that overlaps both fighters is a third person and is dropped.
     """
     corrections = corrections or {}
     dropped: list[int] = []
@@ -216,28 +267,49 @@ def pick_fighters(
         else:
             free.append(t)
 
-    groups: list[tuple[Corner | None, list[TrackSummary]]] = [
-        (corner, members) for corner, members in pinned.items() if members
-    ]
+    # Measured against every track seen long enough, the referee included: he is
+    # fighter-sized, and a shot where the filter drops him must not make the crowd
+    # look big by comparison.
+    biggest = max(
+        (t["mean_area"] for t in tracks if t["frames"] >= config.min_track_frames), default=0
+    )
+    small = [t for t in free if t["mean_area"] < config.min_fighter_area * biggest]
+    dropped += [t["track_id"] for t in small]
+    free = [t for t in free if t not in small]
+
+    kit_tracks: dict[Corner, list[TrackSummary]] = {"red": [], "blue": []}
+    if _kit_trusted(free, pinned, config):
+        for t in free:
+            corner = track_kit(t, config)
+            # A corner a correction holds is left to the correction.
+            if corner is not None and not pinned[corner]:
+                kit_tracks[corner].append(t)
+        free = [t for t in free if not any(t in members for members in kit_tracks.values())]
+
+    # (corner from a correction, corner from the kit, members)
+    groups: list[tuple[Corner | None, Corner | None, list[TrackSummary]]] = [
+        (corner, None, members) for corner, members in pinned.items() if members
+    ] + [(None, corner, members) for corner, members in kit_tracks.items() if members]
     for t in sorted(free, key=lambda t: t["frames"] * t["mean_area"], reverse=True):
         span = (t["first_frame"], t["last_frame"])
         fits = [
             g
             for g in groups
-            if not any(_overlaps(span, (m["first_frame"], m["last_frame"])) for m in g[1])
+            if not any(_overlaps(span, (m["first_frame"], m["last_frame"])) for m in g[2])
         ]
         if fits:
             # Join the fragment to the fighter it looks most like.
             best = min(
-                fits, key=lambda g: feature_distance(t["feature"], _fighter(g[1], None)["feature"])
+                fits, key=lambda g: feature_distance(t["feature"], _fighter(g[2], None)["feature"])
             )
-            best[1].append(t)
+            best[2].append(t)
         elif len(groups) < 2:
-            groups.append((None, [t]))
+            groups.append((None, None, [t]))
         else:
             dropped.append(t["track_id"])
 
-    return [_fighter(members, corner) for corner, members in groups], sorted(dropped)
+    fighters = [_fighter(members, corner, kit) for corner, kit, members in groups]
+    return fighters, sorted(dropped)
 
 
 def _update(ref: list[float] | None, weight: float, fighter: Fighter) -> tuple[list[float], float]:
