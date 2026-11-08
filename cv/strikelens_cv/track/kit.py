@@ -5,7 +5,9 @@ stores the share of red and of blue kit pixels. `assign_corners` turns a
 fighter's shares into a corner (`fighter_kit` in assign.py).
 
 A kit pixel is not skin, not dark, and saturated enough to be a real colour.
-Red is a hue of 0-15 or 345-360 degrees, blue 190-250 degrees. Shirtless fighters
+Red is a hue of 0-15 or 320-360 degrees, blue 190-250 degrees. Byon's red singlets
+measure about 336 degrees, between red and magenta, so the red range reaches down
+to 320 (docs/decisions/0006-track-colour-calibration.md). Shirtless fighters
 show skin and the referee wears black, so neither has kit and both fall back to
 the shorts colour.
 
@@ -19,7 +21,7 @@ from strikelens_cv.track.config import TrackConfig
 from strikelens_cv.track.corrections import Corner
 from strikelens_cv.track.referee import Pixel, is_skin
 
-RED_HUES = ((0.0, 15.0), (345.0, 360.0))
+RED_HUES = ((0.0, 15.0), (320.0, 360.0))
 BLUE_HUES = ((190.0, 250.0),)
 
 

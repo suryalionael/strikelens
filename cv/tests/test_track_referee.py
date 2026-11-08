@@ -88,7 +88,13 @@ class TestTorsoSkinShare:
         assert torso_skin_share([], CONFIG) is None
 
 
-DARK = {"black-shirt": (20, 20, 20), "charcoal-shirt": (55, 55, 60)}
+DARK = {
+    "black-shirt": (20, 20, 20),
+    "charcoal-shirt": (55, 55, 60),
+    # A Byon referee's black shirt under the ring lights: navy tint, brightest
+    # channel 90 (measured, ADR 0006). Too bright for the old cut-off of 70.
+    "black-shirt-under-lights": (90, 55, 50),
+}
 NOT_DARK = {
     "red-singlet": (30, 30, 200),
     "blue-singlet": (200, 60, 20),  # pure-ish blue: dark by luma, bright by value

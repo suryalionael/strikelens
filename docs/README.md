@@ -42,3 +42,4 @@ next number.
 | [0003](decisions/0003-human-in-the-loop.md) | Human in the loop for every counted strike |
 | [0004](decisions/0004-pose-library.md) | MediaPipe for pose in v1, RTMPose as the upgrade path |
 | [0005](decisions/0005-fighter-hotkeys.md) | Fighter hotkeys: `Q` for red, `W` for blue |
+| [0006](decisions/0006-track-colour-calibration.md) | Kit and referee colour thresholds calibrated on Byon footage |

@@ -25,8 +25,9 @@ max_feature_distance = 0.5
 kit_corner = true
 
 # Lowest gap between a fighter's red and blue kit shares (0 to 1) for the kit to
-# decide. Only needs `strikelens-cv assign` again after changing.
-min_kit_share = 0.3
+# decide. Measured on Byon footage: singlets 0.31 or more, shirtless fighters and
+# the referee 0.16 or less (ADR 0006). Only needs `strikelens-cv assign` again.
+min_kit_share = 0.25
 
 # Lowest saturation (0 to 1) for a chest pixel to count as kit, so pale and grey
 # pixels do not. Measured while detecting: needs `strikelens-cv track` again.
@@ -48,8 +49,10 @@ referee_rule = "dark"
 min_torso_dark = 0.5
 
 # Dark rule: a pixel is dark when its brightest channel (B, G, or R) is at most
-# this (0-255) and it is not skin. A first guess; check it on real footage.
-dark_max_value = 70
+# this (0-255) and it is not skin. Byon referees' black shirts measure up to about
+# 90 under the ring lights. With 100, referees' chests were at least 60% dark and
+# fighters' at most 37% (ADR 0006).
+dark_max_value = 100
 
 # Skin rule: lowest share of skin pixels on the chest for a fighter (0 to 1).
 min_torso_skin = 0.25
