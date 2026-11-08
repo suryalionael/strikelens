@@ -99,6 +99,14 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Training windows: `strikelens-cv windows` cuts keypoint windows around confirmed
   tags, rejected suggestions, and times with no strike, split by whole fight
   (ADR 0008) (#23).
+- Strike suggestions: `strikelens-cv suggest-strikes` turns peaks in a model's score
+  into pending CV tags, and `--post` adds them to the API for review. The model for
+  now is an uncalibrated motion baseline with no weapon guess (ADR 0009) (#25).
+
+### Changed
+
+- The stats panel loads on demand, so the tagger's first download drops from 678 kB
+  to 280 kB (#70).
 
 ### Fixed
 
