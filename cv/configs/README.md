@@ -8,3 +8,4 @@ hold settings only, never paths to footage.
 - `track.toml`: YOLO weights file, confidence, the red and blue matching, and the referee filter's skin ranges for `strikelens-cv track`.
 - `segments.toml`: when a run of short shots is suggested as a replay (`strikelens-cv suggest`, also run by ingest).
 - `pose.toml`: pose backend, model file, box margin, and lowest pose confidence for `strikelens-cv pose`.
+- `rounds.toml`: where to look for the broadcast scoreboard and how its time on screen becomes rounds (`strikelens-cv rounds`, also run by ingest).

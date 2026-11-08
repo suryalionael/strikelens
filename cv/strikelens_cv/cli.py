@@ -10,6 +10,7 @@ from strikelens_cv import __version__
 from strikelens_cv.ingest.config import DEFAULT_CONFIG
 from strikelens_cv.overlay.config import DEFAULT_OVERLAY_CONFIG
 from strikelens_cv.pose.config import DEFAULT_POSE_CONFIG
+from strikelens_cv.rounds.config import DEFAULT_ROUNDS_CONFIG
 from strikelens_cv.segments.config import DEFAULT_SEGMENT_CONFIG
 from strikelens_cv.segments.core import in_round
 from strikelens_cv.track.config import DEFAULT_TRACK_CONFIG
@@ -52,6 +53,17 @@ def build_parser() -> argparse.ArgumentParser:
     suggest.add_argument("--fight", required=True, help="fight name used at ingest")
     suggest.add_argument(
         "--config", type=Path, default=DEFAULT_SEGMENT_CONFIG, help="TOML settings file"
+    )
+
+    rounds = commands.add_parser(
+        "rounds",
+        help="suggest rounds from the broadcast scoreboard (needs the ingest extra)",
+        description="Find when the scoreboard is on screen in the extracted frames and "
+        "write round-suggestions.json to data/processed/<fight>/. The tagger loads it.",
+    )
+    rounds.add_argument("--fight", required=True, help="fight name used at ingest")
+    rounds.add_argument(
+        "--config", type=Path, default=DEFAULT_ROUNDS_CONFIG, help="TOML settings file"
     )
 
     track = commands.add_parser(
@@ -151,6 +163,27 @@ def run_suggest(args: argparse.Namespace) -> int:
         return 1
     count = len(suggestions)
     print(f"{count} likely {'replay' if count == 1 else 'replays'} written to {path}")
+    return 0
+
+
+def _clock(ms: int) -> str:
+    return f"{ms // 60_000}:{ms // 1000 % 60:02}"
+
+
+def run_rounds(args: argparse.Namespace) -> int:
+    from strikelens_cv.rounds import load_rounds_config, suggest_fight_rounds
+
+    try:
+        path, suggestions = suggest_fight_rounds(args.fight, load_rounds_config(args.config))
+    except (FileNotFoundError, RuntimeError, ValueError) as error:
+        print(f"strikelens-cv rounds: {error}", file=sys.stderr)
+        return 1
+    for r in suggestions:
+        flag = " (partial?)" if r["partial"] else ""
+        print(f"Round {r['number']}: {_clock(r['start_ms'])} to {_clock(r['end_ms'])}{flag}")
+    if not suggestions:
+        print("No scoreboard found. Mark the rounds by hand, or check scoreboard_region.")
+    print(f"Written to {path}")
     return 0
 
 
@@ -277,6 +310,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return run_ingest(args)
     if args.command == "suggest":
         return run_suggest(args)
+    if args.command == "rounds":
+        return run_rounds(args)
     if args.command in ("track", "assign"):
         return run_track(args, redo_only=args.command == "assign")
     if args.command == "swaps":

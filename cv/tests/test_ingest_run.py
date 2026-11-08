@@ -26,6 +26,8 @@ def fake_tools(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(run, "extract_frames", fake_extract)
     monkeypatch.setattr(run, "detect_scenes", lambda *_: ([(0.0, 2.0), (2.0, 4.0)], 4_000))
+    # The scoreboard detector reads real images; it has its own tests.
+    monkeypatch.setattr(run, "write_round_suggestions", lambda *_: [])
 
 
 @pytest.mark.usefixtures("fake_tools")

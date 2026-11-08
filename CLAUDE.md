@@ -38,7 +38,7 @@ apps/api/app/routes/    HTTP endpoints
 apps/api/app/models/    SQLAlchemy + Pydantic models
 apps/api/app/stats/     pure stat functions (core.py)
 apps/api/tests/         pytest, incl. schema validation
-cv/strikelens_cv/{ingest,segments,track,pose,strikes,overlay}/
+cv/strikelens_cv/{ingest,segments,rounds,track,pose,strikes,overlay}/
 cv/notebooks/  cv/configs/  cv/tests/
 shared/schema/          tag, fight, fighter JSON Schemas
 docs/                   all docs; decisions/ holds ADRs
