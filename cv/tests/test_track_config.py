@@ -36,6 +36,10 @@ def test_unknown_key_is_an_error(tmp_path: Path) -> None:
         {"kit_min_saturation": -0.1},
         {"min_fighter_area": -0.1},
         {"min_fighter_area": 1},
+        {"split_window": 0},
+        {"split_kit_jump": 0},
+        {"split_dark_jump": 3},
+        {"split_move": 0},
     ],
 )
 def test_bad_values(values: dict[str, object]) -> None:

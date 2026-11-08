@@ -29,6 +29,7 @@ from strikelens_cv.track.assign import (
 from strikelens_cv.track.config import TrackConfig
 from strikelens_cv.track.corrections import Corrections, load_corrections
 from strikelens_cv.track.referee import RefereeReport, is_referee, referee_report
+from strikelens_cv.track.split import is_split, split_switches
 from strikelens_cv.track.swaps import SwapReport, count_swaps
 
 WEIGHTS_HELP = (
@@ -114,7 +115,7 @@ def track(fight: str, config: TrackConfig, corrections: Path | None = None) -> T
 
     frames = label_frames(manifest["frames"], cuts["shots"], segments, rounds)
     files = {f["index"]: f["file"] for f in manifest["frames"]}
-    detections = detect(out_dir / "frames", frames, files, weights, config)
+    detections = split_switches(detect(out_dir / "frames", frames, files, weights, config), config)
     _write(
         out_dir / "detections.json",
         {
@@ -126,6 +127,17 @@ def track(fight: str, config: TrackConfig, corrections: Path | None = None) -> T
         },
     )
     return assign(fight, config, corrections)
+
+
+def _load_detections(out_dir: Path, config: TrackConfig) -> dict[str, Any]:
+    """detections.json, with mixed tracks split. Detections from before #64 are
+    split once and saved, so the IDs in tracks.json, detections.json, and the
+    overlay all agree."""
+    data = _read(out_dir / "detections.json", "run strikelens-cv track first")
+    if not is_split(data["detections"]):
+        data["detections"] = split_switches(data["detections"], config)
+        _write(out_dir / "detections.json", data)
+    return data
 
 
 def _assignment(
@@ -144,7 +156,7 @@ def _assignment(
 def assign(fight: str, config: TrackConfig, corrections: Path | None = None) -> TrackResult:
     """Redo red and blue from detections.json, for example after adding corrections."""
     out_dir = processed_dir(fight)
-    data = _read(out_dir / "detections.json", "run strikelens-cv track first")
+    data = _load_detections(out_dir, config)
     fixes = load_corrections(corrections) if corrections else None
     assignment, frames = _assignment(data, config, fixes)
     # Files from before rounds were read have no "rounds": the whole video was tracked.
@@ -165,7 +177,7 @@ def assign(fight: str, config: TrackConfig, corrections: Path | None = None) -> 
 
 def swaps(fight: str, config: TrackConfig, corrections: Path) -> SwapReport:
     """Swaps in the automatic assignment, against the same detections corrected."""
-    data = _read(processed_dir(fight) / "detections.json", "run strikelens-cv track first")
+    data = _load_detections(processed_dir(fight), config)
     _, auto = _assignment(data, config, None)
     _, truth = _assignment(data, config, load_corrections(corrections))
     return count_swaps(auto, truth)
@@ -173,7 +185,7 @@ def swaps(fight: str, config: TrackConfig, corrections: Path) -> SwapReport:
 
 def referee(fight: str, config: TrackConfig, corrections: Path) -> RefereeReport:
     """How well the referee filter does, with the corrections as the truth."""
-    data = _read(processed_dir(fight) / "detections.json", "run strikelens-cv track first")
+    data = _load_detections(processed_dir(fight), config)
     return referee_report(
         summarise_tracks(data["detections"]), load_corrections(corrections), config
     )

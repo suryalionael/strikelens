@@ -32,6 +32,8 @@ class Detection(TypedDict):
     feature: list[float]
     # Share of skin on the chest, for the referee filter. Missing before #20.
     torso_skin: NotRequired[float | None]
+    # ByteTrack's own ID, before split.py cut tracks that switch person (#64).
+    bytetrack_id: NotRequired[int]
     # Share of dark (black, not skin) pixels on the chest. Missing before the dark rule.
     torso_dark: NotRequired[float | None]
     # Shares of red and blue kit pixels on the chest. Missing before kit colour.
