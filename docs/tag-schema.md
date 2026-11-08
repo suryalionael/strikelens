@@ -110,8 +110,14 @@ One key per choice, no modifiers, so the analyst can keep one hand on the keyboa
 | **Playback** | |
 | Play / pause | `Space` |
 | Frame step back / forward | `←` / `→` |
+| Jump 5 s back / forward | `Shift+←` / `Shift+→` |
+| Jump 30 s back / forward | `Alt+←` / `Alt+→` (`Option` on macOS) |
 | **Editing** | |
 | Undo last change (new tag, edit, or delete) | `Ctrl+Z` (`Cmd+Z` on macOS) |
+
+The player also has a seek bar over the whole video and a **Go to** field that
+takes `m:ss` or `h:mm:ss`. The usual video-site keys (`J`, `L`, `0`-`9`) are
+tagging keys here, so jumps use `Shift` and `Alt` with the arrows.
 
 ### How a tag is entered
 

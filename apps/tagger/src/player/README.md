@@ -3,9 +3,14 @@
 Video player for a local fight file. The file is opened with an object URL and
 never leaves the browser.
 
-- `time.ts`: pure helpers. Time formatting (`mm:ss.mmm`), frame index, frame step.
-- `keys.ts`: maps `Space`, `←`, `→` to player actions. Ignores keys typed into form
-  controls and keys with modifiers.
+- `time.ts`: pure helpers. Time formatting (`mm:ss.mmm`, and `m:ss` or `h:mm:ss` for
+  the seek bar), parsing a go-to time, frame index, frame step, jumps.
+- `keys.ts`: maps `Space`, `←`, `→` to player actions, and `Shift`/`Alt` with the
+  arrows to 5 s and 30 s jumps. Ignores keys typed into form controls and keys
+  with `Ctrl` or `Cmd`.
+- `SeekBar.tsx`: a seek bar over the whole video with the time under the pointer,
+  and a Go to field. After a click or drag the bar gives the keyboard back, so
+  `Space` and the arrows keep working.
 - `usePlayerState.ts`: owns the `<video>` element and mirrors its state into React.
 - `PlayerProvider.tsx` and `PlayerContext.ts`: share the player. Any component
   inside `PlayerProvider` calls `usePlayer()` to read `currentTime`, `playing`,

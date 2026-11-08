@@ -1,7 +1,8 @@
 import { useEffect } from 'react'
 import { playerKeyAction } from './keys'
 import { usePlayer } from './PlayerContext'
-import { FRAME_RATES, PLAYBACK_RATES, formatTime, frameIndex } from './time'
+import { SeekBar } from './SeekBar'
+import { FRAME_RATES, PLAYBACK_RATES, formatTime, frameIndex, jumpTime } from './time'
 
 const button =
   'rounded border border-neutral-700 px-3 py-1.5 text-sm hover:bg-neutral-800 disabled:opacity-40 disabled:hover:bg-transparent'
@@ -17,6 +18,7 @@ export function VideoPlayer() {
     loadFile,
     togglePlay,
     stepFrame,
+    seek,
     setRate,
     setFps,
     videoRef,
@@ -31,7 +33,11 @@ export function VideoPlayer() {
       // Stop Space scrolling the page or clicking a focused button.
       event.preventDefault()
       if (action === 'toggle-play') togglePlay()
-      else stepFrame(action === 'step-back' ? -1 : 1)
+      else if (typeof action === 'object') {
+        // Read the element, not React state, so the listener is not re-added every frame.
+        const video = videoRef.current
+        if (video) seek(jumpTime(video.currentTime, action.jump, video.duration || 0))
+      } else stepFrame(action === 'step-back' ? -1 : 1)
     }
     // Browsers click a focused button on Space keyup, so block that too.
     const onKeyUp = (event: KeyboardEvent) => {
@@ -43,7 +49,7 @@ export function VideoPlayer() {
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('keyup', onKeyUp)
     }
-  }, [togglePlay, stepFrame])
+  }, [togglePlay, stepFrame, seek, videoRef])
 
   return (
     <section aria-label="Video player" className="flex flex-col gap-3">
@@ -75,6 +81,8 @@ export function VideoPlayer() {
           </p>
         )}
       </div>
+
+      <SeekBar />
 
       <div className="flex flex-wrap items-center gap-2">
         <button
@@ -138,7 +146,8 @@ export function VideoPlayer() {
       </div>
 
       <p className="text-xs text-neutral-500">
-        Space plays and pauses. ← and → step one frame. Set the frame rate to match the file.
+        Space plays and pauses. ← and → step one frame. Shift+← and Shift+→ jump 5 s, Alt+← and
+        Alt+→ (Option on macOS) jump 30 s. Set the frame rate to match the file.
       </p>
     </section>
   )
