@@ -154,6 +154,11 @@ How it works:
    unless its kit says the other corner. A third person overlapping both is
    dropped. Long shots break into many short tracks, so these rules matter most
    there.
+   Before that, a track whose ID ByteTrack passed to another person is cut in two
+   where the chest colour, the dark share, or the box position jumps (see
+   `split_*` in `configs/track.toml`). `detections.json` keeps ByteTrack's ID as
+   `bytetrack_id`. Detections from before this step are split the first time
+   `assign` reads them, and saved.
 3. Across shots, fighters are matched to red and blue. A fighter in clearly red
    or blue kit takes that corner (see Kit colour). Everyone else is matched by
    the colour of their shorts: a hue and saturation histogram of the middle of
