@@ -85,7 +85,11 @@ def post_tags(api_url: str, fight_id: str, tags: list[dict[str, Any]]) -> int:
     """POST the tags to the API's bulk endpoint, in chunks. Returns how many were saved."""
     saved = 0
     for start in range(0, len(tags), BULK_LIMIT):
-        chunk = tags[start : start + BULK_LIMIT]
+        # The API takes the fight from the URL and refuses it in the body.
+        chunk = [
+            {k: v for k, v in tag.items() if k != "fight_id"}
+            for tag in tags[start : start + BULK_LIMIT]
+        ]
         request = urllib.request.Request(
             f"{api_url.rstrip('/')}/fights/{fight_id}/tags/bulk",
             data=json.dumps(chunk).encode(),
@@ -102,7 +106,9 @@ def post_tags(api_url: str, fight_id: str, tags: list[dict[str, Any]]) -> int:
                     "the API already has some of these suggestions (same model, same fight). "
                     "Reject or delete them first, or change the settings."
                 ) from error
-            raise ValueError(f"the API refused the suggestions ({error.code}): {detail}") from error
+            raise ValueError(
+                f"the API refused the suggestions ({error.code}): {detail[:300]}"
+            ) from error
     return saved
 
 

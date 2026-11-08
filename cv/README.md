@@ -361,6 +361,29 @@ Whole fights go to training or validation, never both. Fights with different
 keypoint formats are refused. Settings are in `configs/windows.toml`; why these
 values, in [ADR 0008](../docs/decisions/0008-training-windows.md).
 
+## Strike suggestions
+
+`suggest-strikes` scores each fighter's keypoints inside the marked rounds and turns
+peaks in the score into pending CV tags, which the analyst reviews in the tagger
+(Review suggestions). It needs the `pose` output and `fight.json` with rounds.
+
+```bash
+uv run strikelens-cv suggest-strikes --fight "Byon 40 main event"
+uv run strikelens-cv suggest-strikes --fight "Byon 40 main event" --post http://localhost:8000
+```
+
+It writes `data/processed/<fight>/strike-suggestions.json`. With `--post` it also
+adds the tags to the fight in the API. Tag IDs depend only on the fight, fighter,
+time, and model, so posting the same suggestions twice is refused, not doubled.
+Peaks inside replay and non-fight segments are left out.
+
+The model is set in `configs/infer.toml`. `motion-baseline` needs no training: it
+scores how fast the elbows, wrists, knees, and ankles move. It cannot tell weapons
+apart, so the analyst sets the weapon, and its threshold is **not calibrated** on
+tagged fights. It stands in until a trained model exists (#24), which plugs in
+behind `StrikeModel` in `strikes/models.py` and has to beat it. See
+[ADR 0009](../docs/decisions/0009-strike-suggestions.md).
+
 ## Overlay
 
 Draws the red and blue boxes, their skeletons, and a strike timeline onto the

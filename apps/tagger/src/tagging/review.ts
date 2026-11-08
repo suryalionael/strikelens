@@ -99,7 +99,8 @@ export function planConfirm(tag: Tag, edits: ReviewEdits): ConfirmPlan {
   const merged = withEdits(tag, edits)
   const missing = (['weapon', 'outcome', 'target'] as const).filter((f) => merged[f] === null)
   if (missing.length > 0) {
-    return { ok: false, error: `Set the ${missing.join(' and ')} first, then press Enter.` }
+    const names = missing.length === 3 ? 'weapon, outcome, and target' : missing.join(' and ')
+    return { ok: false, error: `Set the ${names} first, then press Enter.` }
   }
   const { fighter, weapon, outcome, target } = merged
   if (weapon === null || outcome === null || target === null) {

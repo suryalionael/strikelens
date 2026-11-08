@@ -1,11 +1,18 @@
 """Strike suggestions: peak picking, tags in the schema, and the motion baseline."""
 
+import io
 import json
+import urllib.error
+import urllib.request
 from datetime import UTC, datetime
+from typing import Any
+
+import pytest
 
 from strikelens_cv.paths import REPO_ROOT
 from strikelens_cv.strikes.infer import pick_peaks, suggestions
 from strikelens_cv.strikes.models import MotionBaseline, load_model
+from strikelens_cv.strikes.suggest import post_tags
 
 SCHEMA = json.loads((REPO_ROOT / "shared" / "schema" / "tag.schema.json").read_text())
 FIGHT = {
@@ -58,7 +65,50 @@ def test_motion_baseline_scores_fast_limbs_high() -> None:
 
 
 def test_unknown_model_is_an_error() -> None:
-    import pytest
-
     with pytest.raises(ValueError, match="unknown model"):
         load_model("nope")
+
+
+class FakeResponse(io.BytesIO):
+    def __enter__(self) -> "FakeResponse":
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        self.close()
+
+
+def test_post_drops_fight_id_and_sends_chunks(monkeypatch: pytest.MonkeyPatch) -> None:
+    # The API takes the fight from the URL and refuses fight_id in the body.
+    sent: list[tuple[str, list[dict[str, Any]]]] = []
+
+    def fake_urlopen(request: urllib.request.Request, timeout: int) -> FakeResponse:
+        body = json.loads(request.data)  # type: ignore[arg-type]
+        sent.append((request.full_url, body))
+        return FakeResponse(json.dumps(body).encode())
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    tags = [{"id": str(i), "fight_id": "f1", "timestamp_ms": i} for i in range(1500)]
+    assert post_tags("http://localhost:8000/", "f1", tags) == 1500
+    assert [len(body) for _, body in sent] == [1000, 500]
+    assert sent[0][0] == "http://localhost:8000/fights/f1/tags/bulk"
+    assert all("fight_id" not in tag for _, body in sent for tag in body)
+    assert tags[0]["fight_id"] == "f1"  # the caller's tags keep it
+
+
+@pytest.mark.parametrize(
+    ("code", "message"), [(409, "already has some"), (422, r"refused the suggestions \(422\)")]
+)
+def test_post_explains_a_refusal(monkeypatch: pytest.MonkeyPatch, code: int, message: str) -> None:
+    def fake_urlopen(request: urllib.request.Request, timeout: int) -> FakeResponse:
+        raise urllib.error.HTTPError(
+            request.full_url,
+            code,
+            "no",
+            None,  # type: ignore[arg-type]
+            io.BytesIO(b"x" * 5000),
+        )
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    with pytest.raises(ValueError, match=message) as error:
+        post_tags("http://localhost:8000", "f1", [{"id": "1", "fight_id": "f1"}])
+    assert len(str(error.value)) < 500
