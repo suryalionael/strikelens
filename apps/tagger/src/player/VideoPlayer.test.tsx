@@ -127,6 +127,53 @@ describe('VideoPlayer', () => {
     expect(screen.getByTestId('probe')).toHaveTextContent('0.25')
   })
 
+  it('seeks anywhere in the video with the seek bar', () => {
+    const video = setup()
+    fireEvent.change(screen.getByRole('slider', { name: 'Seek' }), { target: { value: '4.2' } })
+    expect(video.currentTime).toBeCloseTo(4.2)
+  })
+
+  it('shows the time under the pointer on the seek bar', () => {
+    setup()
+    const bar = screen.getByRole('slider', { name: 'Seek' })
+    vi.spyOn(bar, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 200, 8))
+    fireEvent.pointerMove(bar, { clientX: 150 })
+    expect(screen.getByText('0:07')).toBeInTheDocument()
+    fireEvent.pointerLeave(bar)
+    expect(screen.queryByText('0:07')).toBeNull()
+  })
+
+  it('goes to a typed time', () => {
+    const video = setup()
+    fireEvent.change(screen.getByRole('textbox', { name: 'Go to' }), { target: { value: '0:07' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Go' }))
+    expect(video.currentTime).toBeCloseTo(7)
+    expect(screen.getByRole('textbox', { name: 'Go to' })).toHaveValue('')
+  })
+
+  it.each([
+    ['abc', 'Use m:ss or h:mm:ss, for example 4:20.'],
+    ['0:20', 'The video is 0:10 long.'],
+  ])('explains a go-to time it cannot use: %j', (text, message) => {
+    const video = setup()
+    fireEvent.change(screen.getByRole('textbox', { name: 'Go to' }), { target: { value: text } })
+    fireEvent.click(screen.getByRole('button', { name: 'Go' }))
+    expect(screen.getByRole('alert')).toHaveTextContent(message)
+    expect(video.currentTime).toBe(0)
+  })
+
+  it('jumps 5 s with Shift+arrows and 30 s with Alt+arrows, inside the video', () => {
+    const video = setup()
+    fireEvent.keyDown(window, { key: 'ArrowRight', shiftKey: true })
+    expect(video.currentTime).toBeCloseTo(5)
+    fireEvent.keyDown(window, { key: 'ArrowLeft', shiftKey: true })
+    expect(video.currentTime).toBeCloseTo(0)
+    fireEvent.keyDown(window, { key: 'ArrowRight', altKey: true })
+    expect(video.currentTime).toBeCloseTo(10)
+    fireEvent.keyDown(window, { key: 'ArrowLeft', altKey: true })
+    expect(video.currentTime).toBeCloseTo(0)
+  })
+
   it('throws a clear error when usePlayer is used outside the provider', () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined)
     expect(() => render(<TimeProbe />)).toThrow('usePlayer must be used inside PlayerProvider')

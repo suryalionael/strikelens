@@ -1,4 +1,12 @@
-import { formatTime, frameIndex, parseTime, stepFrameTime } from './time'
+import {
+  formatClock,
+  formatTime,
+  frameIndex,
+  jumpTime,
+  parseClock,
+  parseTime,
+  stepFrameTime,
+} from './time'
 
 describe('formatTime', () => {
   it.each([
@@ -94,5 +102,48 @@ describe('parseTime', () => {
 
   it('round-trips with formatTime', () => {
     expect(parseTime(formatTime(61.234))).toBe(61234)
+  })
+})
+
+describe('formatClock', () => {
+  it.each([
+    [0, '0:00'],
+    [4.9, '0:04'],
+    [260, '4:20'],
+    [3599, '59:59'],
+    [3600, '1:00:00'],
+    [3725, '1:02:05'],
+    [Number.NaN, '0:00'],
+  ])('formats %s s as %s', (seconds, text) => {
+    expect(formatClock(seconds)).toBe(text)
+  })
+})
+
+describe('parseClock', () => {
+  it.each([
+    ['4:20', 260_000],
+    ['04:20', 260_000],
+    ['260', 260_000],
+    ['1:02:05', 3_725_000],
+    ['0:59.5', 59_500],
+    [' 2:00 ', 120_000],
+  ])('reads %s as %s ms', (text, ms) => {
+    expect(parseClock(text)).toBe(ms)
+  })
+
+  it.each(['', 'abc', '4:60', '1:60:00', '4:20:', '-1', '4.20.1'])('rejects %j', (text) => {
+    expect(parseClock(text)).toBeNull()
+  })
+})
+
+describe('jumpTime', () => {
+  it('jumps forward and back', () => {
+    expect(jumpTime(100, 30, 600)).toBe(130)
+    expect(jumpTime(100, -5, 600)).toBe(95)
+  })
+
+  it('stops at the start and the end of the video', () => {
+    expect(jumpTime(3, -5, 600)).toBe(0)
+    expect(jumpTime(590, 30, 600)).toBe(600)
   })
 })
