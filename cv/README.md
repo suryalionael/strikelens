@@ -336,6 +336,31 @@ in, keypoints out), so RTMPose can replace MediaPipe (ADR 0004).
 `tests/test_pose_end_to_end.py` runs MediaPipe on a sample photo. It skips unless
 the pose extra and the model are installed.
 
+## Training windows
+
+The strike model learns from confirmed tags. `windows` cuts a fixed-length window
+of the thrower's keypoints around each confirmed tag, labelled with the weapon,
+plus negatives from rejected suggestions and from round time with no strike.
+Save each fight's tags from the API next to its keypoints first:
+
+```bash
+curl -s http://localhost:8000/fights/<fight-id>/tags > data/processed/<fight>/tags.json
+uv run strikelens-cv windows --fight "Byon 40 main event" --fight "Byon 41 co-main" --name v1
+```
+
+It writes `data/labels/windows/<name>/` (gitignored):
+
+- `windows.jsonl`: one window per line: `fight`, `split`, `kind` (`strike`,
+  `rejected`, `background`), `label` (the weapon, or `none`), `fighter`, `tag_id`,
+  `center_ms`, and `samples`: 16 lists of 33 `[x, y, z, visibility]` keypoints
+  relative to the fighter's box (centre 0, height 1), or null when missing.
+- `manifest.json`: the keypoint format and landmark names, the settings, which
+  split each fight is in, and the counts per split and label.
+
+Whole fights go to training or validation, never both. Fights with different
+keypoint formats are refused. Settings are in `configs/windows.toml`; why these
+values, in [ADR 0008](../docs/decisions/0008-training-windows.md).
+
 ## Overlay
 
 Draws the red and blue boxes, their skeletons, and a strike timeline onto the

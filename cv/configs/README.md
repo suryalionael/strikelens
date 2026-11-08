@@ -9,3 +9,4 @@ hold settings only, never paths to footage.
 - `segments.toml`: when a run of short shots is suggested as a replay (`strikelens-cv suggest`, also run by ingest).
 - `pose.toml`: pose backend, model file, box margin, and lowest pose confidence for `strikelens-cv pose`.
 - `rounds.toml`: where to look for the broadcast scoreboard and how its time on screen becomes rounds (`strikelens-cv rounds`, also run by ingest).
+- `windows.toml`: training window length, samples, missing data, negatives, and the validation split for `strikelens-cv windows`.
