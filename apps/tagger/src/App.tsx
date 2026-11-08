@@ -1,12 +1,16 @@
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import type { Fight } from './api/types'
 import { FightSetup } from './fight/FightSetup'
 import type { RoundDraft } from './fight/rounds'
 import type { SegmentDraft } from './fight/segments'
 import { PlayerProvider } from './player/PlayerProvider'
 import { VideoPlayer } from './player/VideoPlayer'
-import { StatsPanel } from './stats/StatsPanel'
 import { TagPanel } from './tagging/TagPanel'
+
+// The charts are the heaviest part of the app, and tagging does not need them to start.
+const StatsPanel = lazy(() =>
+  import('./stats/StatsPanel').then((module) => ({ default: module.StatsPanel })),
+)
 
 function App() {
   const [fight, setFight] = useState<Fight | null>(null)
@@ -36,7 +40,13 @@ function App() {
               segments={segments}
               onTagsChanged={() => setSavedTags((n) => n + 1)}
             />
-            <StatsPanel key={`stats-${fight?.id ?? 'none'}`} fight={fight} refreshKey={savedTags} />
+            <Suspense fallback={<p className="text-sm text-neutral-400">Loading stats…</p>}>
+              <StatsPanel
+                key={`stats-${fight?.id ?? 'none'}`}
+                fight={fight}
+                refreshKey={savedTags}
+              />
+            </Suspense>
           </div>
           <aside className="rounded border border-neutral-800 p-4">
             <FightSetup
