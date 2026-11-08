@@ -139,9 +139,9 @@ one. For each box, `track` stores `torso_red` and `torso_blue` in
 `detections.json`: the shares of the chest (the same pixels as the referee
 filter) that are red or blue kit. A kit pixel is not skin, not dark, and has a
 saturation of at least `kit_min_saturation` (0.4). Red is a hue of 0-15 or
-345-360 degrees, blue 190-250.
+320-360 degrees (Byon's red singlets measure about 336), blue 190-250.
 
-In each shot, a fighter whose red share is at least `min_kit_share` (0.3) above
+In each shot, a fighter whose red share is at least `min_kit_share` (0.25) above
 their blue share is red, and the other way round for blue. The kit comes after
 corrections and before the shorts colour. It also teaches the shorts colours, so
 shots where the kit is hard to see still match well. If two fighters in a shot
@@ -168,7 +168,7 @@ finds the referee:
   `torso_dark` is at least `min_torso_dark` (0.5) is dropped as the referee. This
   works for shirtless fighters (Madness) and for fighters in red and blue
   singlets (Tryouts). A pixel is dark when its brightest channel is at most
-  `dark_max_value` (70) and it is not skin. The brightest channel is used instead
+  `dark_max_value` (100) and it is not skin. The brightest channel is used instead
   of brightness (Y), because a pure blue singlet has a Y of about 29 and would
   pass as black. The skin check keeps very dark skin in shadow from passing as a
   black shirt.
@@ -182,6 +182,10 @@ Skin is found with the usual YCrCb rule. Each pixel's Cr and Cb must fall inside
 skin. All of these are in `configs/track.toml`. The chest is measured while
 detecting, so after changing them run `track` again. Detections from before the
 dark rule have no `torso_dark`, and the dark rule keeps all of their tracks.
+
+The kit and dark thresholds were calibrated on labelled boxes from a Tryout and a
+Madness fight. See [ADR 0006](../docs/decisions/0006-track-colour-calibration.md)
+for the measurements, and repeat them when a new event looks different.
 
 Known limits. Check these on real footage before trusting the filter:
 

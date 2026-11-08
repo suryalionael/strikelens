@@ -20,12 +20,12 @@ class TrackConfig:
     min_track_frames: int = 5
     max_feature_distance: float = 0.5
     kit_corner: bool = True
-    min_kit_share: float = 0.3
+    min_kit_share: float = 0.25
     kit_min_saturation: float = 0.4
     referee_filter: bool = True
     referee_rule: RefereeRule = "dark"
     min_torso_dark: float = 0.5
-    dark_max_value: int = 70
+    dark_max_value: int = 100
     min_torso_skin: float = 0.25
     skin_cr: tuple[int, int] = (133, 173)
     skin_cb: tuple[int, int] = (77, 127)

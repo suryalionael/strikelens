@@ -9,13 +9,20 @@ from strikelens_cv.track.kit import to_hsv
 CONFIG = TrackConfig()
 
 # Synthetic BGR colours (as OpenCV stores them).
-RED = {"red-singlet": (30, 30, 200), "dark-red-singlet": (20, 20, 120)}
+RED = {
+    "red-singlet": (30, 30, 200),
+    "dark-red-singlet": (20, 20, 120),
+    # Byon's red singlet as measured: hue 336, between red and magenta (ADR 0006).
+    "byon-red-singlet": (112, 74, 168),
+}
 BLUE = {"blue-singlet": (200, 60, 20), "light-blue-singlet": (230, 140, 60)}
 NEITHER = {
     "skin-light": (170, 190, 240),
     "skin-medium": (110, 140, 200),
     "skin-dark": (40, 60, 100),
     "black-shirt": (20, 20, 20),
+    # The referee's navy-tinted black shirt under the lights: dark, not blue kit.
+    "black-shirt-under-lights": (90, 55, 50),
     "white-shirt": (240, 240, 240),
     "grey-shirt": (128, 128, 128),
     "washed-out-pink": (200, 190, 235),
