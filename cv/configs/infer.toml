@@ -16,3 +16,13 @@ threshold = 0.9
 
 # Two suggestions for one fighter are at least this far apart; the higher peak wins.
 min_gap_ms = 700
+
+# After peak picking, suggestions closer than this, of either fighter, are merged:
+# the most confident is kept. Both fighters move in an exchange, so one moment often
+# scores for both. The analyst adds the second strike of a combo by hand.
+merge_gap_ms = 1000
+
+# At most this many suggestions per round, the most confident first. Freefly counted
+# about 85 attempts a round (both fighters) on a Madness fight, so 50 leaves review
+# quicker than tagging. Tags already in the fight are not counted against it.
+max_per_round = 50

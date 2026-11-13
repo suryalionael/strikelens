@@ -147,6 +147,11 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="API_URL",
         help="also add them to the API as pending tags, e.g. http://localhost:8000",
     )
+    strikes.add_argument(
+        "--replace",
+        action="store_true",
+        help="with --post, first delete this model's suggestions nobody has reviewed yet",
+    )
 
     pose.add_argument("--fight", required=True, help="fight name used at ingest")
     pose.add_argument("--config", type=Path, default=DEFAULT_POSE_CONFIG, help="TOML settings file")
@@ -373,15 +378,22 @@ def run_suggest_strikes(args: argparse.Namespace) -> int:
             load_windows_config(args.windows_config),
             load_infer_config(args.config),
             args.post,
+            args.replace,
         )
     except (FileNotFoundError, KeyError, ValueError) as error:
         print(f"strikelens-cv suggest-strikes: {error}", file=sys.stderr)
         return 1
     per_corner = {c: sum(1 for t in result.tags if t["fighter"] == c) for c in ("red", "blue")}
+    per_round: dict[int, int] = {}
+    for tag in result.tags:
+        per_round[tag["round"]] = per_round.get(tag["round"], 0) + 1
+    rounds = ", ".join(f"round {n}: {k}" for n, k in sorted(per_round.items()))
     print(
-        f"{len(result.tags)} suggestions (red {per_corner['red']}, blue {per_corner['blue']}). "
-        f"Written to {result.path}"
+        f"{len(result.tags)} suggestions (red {per_corner['red']}, blue {per_corner['blue']}; "
+        f"{rounds or 'none'}). Written to {result.path}"
     )
+    if result.replaced:
+        print(f"{result.replaced} earlier suggestions nobody had reviewed were replaced.")
     if result.posted is not None:
         print(f"{result.posted} added to the API as pending tags. Review them in the tagger.")
     return 0
