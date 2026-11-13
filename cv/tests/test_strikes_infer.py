@@ -5,14 +5,22 @@ import json
 import urllib.error
 import urllib.request
 from datetime import UTC, datetime
+from itertools import pairwise
 from typing import Any
 
 import pytest
 
 from strikelens_cv.paths import REPO_ROOT
-from strikelens_cv.strikes.infer import pick_peaks, suggestions
+from strikelens_cv.strikes import load_windows_config
+from strikelens_cv.strikes.infer import pick_peaks, select, suggestions
 from strikelens_cv.strikes.models import MotionBaseline, load_model
-from strikelens_cv.strikes.suggest import post_tags
+from strikelens_cv.strikes.suggest import (
+    InferConfig,
+    load_infer_config,
+    post_tags,
+    replaceable,
+    suggest_strikes,
+)
 
 SCHEMA = json.loads((REPO_ROOT / "shared" / "schema" / "tag.schema.json").read_text())
 FIGHT = {
@@ -112,3 +120,72 @@ def test_post_explains_a_refusal(monkeypatch: pytest.MonkeyPatch, code: int, mes
     with pytest.raises(ValueError, match=message) as error:
         post_tags("http://localhost:8000", "f1", [{"id": "1", "fight_id": "f1"}])
     assert len(str(error.value)) < 500
+
+
+def cv_tag(t: int, fighter: str, confidence: float, number: int = 1) -> dict[str, Any]:
+    return {
+        "id": f"{fighter}-{t}",
+        "timestamp_ms": t,
+        "fighter": fighter,
+        "round": number,
+        "confidence": confidence,
+    }
+
+
+def test_select_keeps_one_suggestion_per_moment_across_fighters() -> None:
+    # Both fighters score in the same exchange: only the stronger one is kept.
+    tags = [cv_tag(1000, "red", 0.95), cv_tag(1300, "blue", 0.99), cv_tag(2500, "red", 0.91)]
+    kept = select(tags, max_per_round=50, merge_gap_ms=1000)
+    assert [(t["timestamp_ms"], t["fighter"]) for t in kept] == [(1300, "blue"), (2500, "red")]
+    assert all(b["timestamp_ms"] - a["timestamp_ms"] >= 1000 for a, b in pairwise(kept))
+
+
+def test_select_keeps_the_most_confident_up_to_the_round_budget() -> None:
+    tags = [cv_tag(i * 2000, "red", 0.9 + i / 100, number=1) for i in range(5)]
+    tags += [cv_tag(20_000 + i * 2000, "blue", 0.9, number=2) for i in range(2)]
+    kept = select(tags, max_per_round=3, merge_gap_ms=1000)
+    assert [t["timestamp_ms"] for t in kept if t["round"] == 1] == [4000, 6000, 8000]
+    assert sum(1 for t in kept if t["round"] == 2) == 2  # each round has its own budget
+
+
+def test_select_leaves_room_around_tags_already_in_the_fight() -> None:
+    tags = [cv_tag(1000, "red", 0.99), cv_tag(3000, "blue", 0.92)]
+    kept = select(tags, max_per_round=50, merge_gap_ms=1000, taken_ms=[1500])
+    assert [t["timestamp_ms"] for t in kept] == [3000]
+
+
+def test_only_unreviewed_suggestions_of_this_model_are_replaced() -> None:
+    tags = [
+        {"id": "a", "source": "cv", "status": "pending", "created_by": "motion-baseline@1"},
+        {"id": "b", "source": "cv", "status": "confirmed", "created_by": "motion-baseline@1"},
+        {"id": "c", "source": "cv", "status": "rejected", "created_by": "motion-baseline@1"},
+        {"id": "d", "source": "cv", "status": "pending", "created_by": "other@1"},
+        {"id": "e", "source": "human", "status": "confirmed", "created_by": "lio"},
+    ]
+    assert replaceable(tags, "motion-baseline@1") == ["a"]
+
+
+@pytest.mark.parametrize(
+    ("settings", "message"),
+    [({"merge_gap_ms": -1}, "merge_gap_ms"), ({"max_per_round": 0}, "max_per_round")],
+)
+def test_bad_selection_settings_are_refused(settings: dict[str, int], message: str) -> None:
+    with pytest.raises(ValueError, match=message):
+        InferConfig(**settings)
+
+
+def test_the_shipped_settings_load() -> None:
+    config = load_infer_config()
+    assert config.max_per_round == 50 and config.merge_gap_ms == 1000
+
+
+def test_replace_needs_post() -> None:
+    with pytest.raises(ValueError, match="needs --post"):
+        suggest_strikes("any", load_windows_config(), load_infer_config(), None, replace=True)
+
+
+def test_suggestions_still_waiting_use_up_the_round_budget() -> None:
+    tags = [cv_tag(i * 2000, "red", 0.95) for i in range(5)]
+    kept = select(tags, max_per_round=3, merge_gap_ms=1000, waiting={1: 2})
+    assert len(kept) == 1
+    assert select(tags, max_per_round=3, merge_gap_ms=1000, waiting={1: 3}) == []

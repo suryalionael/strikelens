@@ -3,10 +3,12 @@
 A model scores a window every `stride_ms` for each fighter. Peaks in that score
 at or above the threshold, at least `min_gap_ms` apart, become CV suggestions:
 tags with `source: cv`, a `confidence`, and `status: pending`, which the analyst
-confirms or rejects in the tagger's review mode.
+confirms or rejects in the tagger's review mode. `select` then keeps one
+suggestion per moment and a budget per round, so review stays quicker than tagging.
 """
 
 import uuid
+from bisect import insort
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from typing import Any, TypedDict
@@ -97,3 +99,32 @@ def suggestions(
                 }
             )
     return sorted(tags, key=lambda tag: (tag["timestamp_ms"], tag["fighter"]))
+
+
+def select(
+    tags: Sequence[Mapping[str, Any]],
+    max_per_round: int,
+    merge_gap_ms: int,
+    taken_ms: Sequence[int] = (),
+    waiting: Mapping[int, int] | None = None,
+) -> list[dict[str, Any]]:
+    """The suggestions worth an analyst's time: one per moment, a budget per round.
+
+    Most confident first, a suggestion is kept only if no kept suggestion, of either
+    fighter, and no time in `taken_ms` (tags already in the fight) is closer than
+    `merge_gap_ms`, and its round has fewer than `max_per_round`, counting the
+    `waiting` suggestions already there per round. Both fighters move in an exchange,
+    so one moment often scores for both: the stronger one is kept. Time order."""
+    kept: list[Mapping[str, Any]] = []
+    blocked = sorted(taken_ms)
+    per_round: dict[int, int] = dict(waiting or {})
+    for tag in sorted(tags, key=lambda t: (-(t["confidence"] or 0.0), t["timestamp_ms"])):
+        t, number = tag["timestamp_ms"], tag["round"]
+        if per_round.get(number, 0) >= max_per_round:
+            continue
+        if any(abs(t - b) < merge_gap_ms for b in blocked):
+            continue
+        kept.append(tag)
+        insort(blocked, t)
+        per_round[number] = per_round.get(number, 0) + 1
+    return [dict(tag) for tag in sorted(kept, key=lambda t: (t["timestamp_ms"], t["fighter"]))]

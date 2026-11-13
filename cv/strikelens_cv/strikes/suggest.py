@@ -4,6 +4,7 @@ import json
 import tomllib
 import urllib.error
 import urllib.request
+from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -11,7 +12,7 @@ from typing import Any
 from strikelens_cv import __version__
 from strikelens_cv.paths import CONFIG_DIR, processed_dir
 from strikelens_cv.strikes.config import WindowsConfig
-from strikelens_cv.strikes.infer import pick_peaks, suggestions
+from strikelens_cv.strikes.infer import pick_peaks, select, suggestions
 from strikelens_cv.strikes.models import StrikeModel, load_model
 from strikelens_cv.strikes.windows import cut_window, missing_share
 
@@ -26,6 +27,8 @@ class InferConfig:
     stride_ms: int = 100
     threshold: float = 0.9
     min_gap_ms: int = 700
+    merge_gap_ms: int = 1000
+    max_per_round: int = 50
 
     def __post_init__(self) -> None:
         if self.stride_ms <= 0:
@@ -34,6 +37,10 @@ class InferConfig:
             raise ValueError("threshold must be between 0 and 1")
         if self.min_gap_ms < 0:
             raise ValueError("min_gap_ms must be at least 0")
+        if self.merge_gap_ms < 0:
+            raise ValueError("merge_gap_ms must be at least 0")
+        if self.max_per_round < 1:
+            raise ValueError("max_per_round must be at least 1")
 
 
 def load_infer_config(path: Path = DEFAULT_INFER_CONFIG) -> InferConfig:
@@ -50,6 +57,7 @@ class SuggestResult:
     path: Path
     tags: list[dict[str, Any]]
     posted: int | None
+    replaced: int = 0
 
 
 def _read(path: Path, hint: str) -> Any:
@@ -79,6 +87,44 @@ def score_corner(
     for i, p in zip(usable, predictions, strict=True):
         scores[i], weapons[i] = p["strike"], p["weapon"]
     return times, scores, weapons
+
+
+def _call(request: urllib.request.Request) -> Any:
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            body = response.read()
+    except urllib.error.HTTPError as error:
+        detail = error.read().decode(errors="replace")
+        raise ValueError(f"the API refused the request ({error.code}): {detail[:300]}") from error
+    return json.loads(body) if body else None
+
+
+def fight_tags(api_url: str, fight_id: str) -> list[dict[str, Any]]:
+    """Every tag the API holds for the fight."""
+    tags: list[dict[str, Any]] = _call(
+        urllib.request.Request(f"{api_url.rstrip('/')}/fights/{fight_id}/tags")
+    )
+    return tags
+
+
+def delete_tags(api_url: str, fight_id: str, tag_ids: Sequence[str]) -> int:
+    """Delete tags one by one. Returns how many were deleted."""
+    for tag_id in tag_ids:
+        _call(
+            urllib.request.Request(
+                f"{api_url.rstrip('/')}/fights/{fight_id}/tags/{tag_id}", method="DELETE"
+            )
+        )
+    return len(tag_ids)
+
+
+def replaceable(tags: Sequence[Mapping[str, Any]], created_by: str) -> list[str]:
+    """IDs of this model's suggestions nobody has reviewed yet. Pure."""
+    return [
+        str(t["id"])
+        for t in tags
+        if t["source"] == "cv" and t["status"] == "pending" and t["created_by"] == created_by
+    ]
 
 
 def post_tags(api_url: str, fight_id: str, tags: list[dict[str, Any]]) -> int:
@@ -117,9 +163,14 @@ def suggest_strikes(
     windows: WindowsConfig,
     config: InferConfig,
     api_url: str | None = None,
+    replace: bool = False,
 ) -> SuggestResult:
-    """Score both fighters, pick peaks, and write strike-suggestions.json. With
-    `api_url`, also post them to the fight in the API as pending tags."""
+    """Score both fighters, pick peaks, keep one per moment and a budget per round
+    (`select`), and write strike-suggestions.json. With `api_url`, also post them to
+    the fight in the API as pending tags, next to no tag already there. With
+    `replace`, this model's unreviewed suggestions are deleted first."""
+    if replace and not api_url:
+        raise ValueError("--replace needs --post: it replaces suggestions in the API")
     out_dir = processed_dir(fight)
     fight_data = _read(
         out_dir / "fight.json",
@@ -135,7 +186,25 @@ def suggest_strikes(
         times, scores, weapons = score_corner(frames, fight_data["rounds"], model, windows, config)
         peaks[corner] = pick_peaks(times, scores, weapons, config.threshold, config.min_gap_ms)
     created_by = f"{model.name}@{model.version}"
-    tags = suggestions(fight_data, peaks, created_by)
+    fight_id = str(fight_data["id"])
+    existing = fight_tags(api_url, fight_id) if api_url else []
+    stale = replaceable(existing, created_by) if replace else []
+    if stale and api_url:
+        delete_tags(api_url, fight_id, stale)
+    # Tags already in the fight keep their place: no new suggestion lands next to them.
+    # Suggestions still waiting for review also use up their round's budget.
+    kept = [t for t in existing if str(t["id"]) not in set(stale)]
+    waiting: dict[int, int] = {}
+    for t in kept:
+        if t["status"] == "pending" and t.get("round") is not None:
+            waiting[int(t["round"])] = waiting.get(int(t["round"]), 0) + 1
+    tags = select(
+        suggestions(fight_data, peaks, created_by),
+        config.max_per_round,
+        config.merge_gap_ms,
+        [int(t["timestamp_ms"]) for t in kept],
+        waiting,
+    )
     path = out_dir / SUGGESTIONS_FILE
     path.write_text(
         json.dumps(
@@ -150,5 +219,5 @@ def suggest_strikes(
         )
         + "\n"
     )
-    posted = post_tags(api_url, str(fight_data["id"]), tags) if api_url and tags else None
-    return SuggestResult(path=path, tags=tags, posted=posted)
+    posted = post_tags(api_url, fight_id, tags) if api_url and tags else None
+    return SuggestResult(path=path, tags=tags, posted=posted, replaced=len(stale))

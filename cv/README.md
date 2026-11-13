@@ -377,6 +377,17 @@ adds the tags to the fight in the API. Tag IDs depend only on the fight, fighter
 time, and model, so posting the same suggestions twice is refused, not doubled.
 Peaks inside replay and non-fight segments are left out.
 
+To keep review quicker than tagging, suggestions closer than `merge_gap_ms` (1 s) are
+merged across both fighters, keeping the most confident, and each round gets at most
+`max_per_round` (50). Suggestions already waiting in the fight count toward it, and
+none is placed within a second of a tag already there. To rerun on a fight, add
+`--replace`: it first deletes this model's suggestions nobody has reviewed, and never
+touches confirmed or rejected tags.
+
+```bash
+uv run strikelens-cv suggest-strikes --fight "Byon 40 main event" --post http://localhost:8000 --replace
+```
+
 The model is set in `configs/infer.toml`. `motion-baseline` needs no training: it
 scores how fast the elbows, wrists, knees, and ankles move. It cannot tell weapons
 apart, so the analyst sets the weapon, and its threshold is **not calibrated** on
