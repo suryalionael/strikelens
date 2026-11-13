@@ -20,7 +20,8 @@ export interface CompleteDraft {
   fighter: Corner
   weapon: Weapon
   outcome: Outcome
-  target: Target
+  /** Null when the tag was saved with Enter before a target key (ADR 0010). */
+  target: Target | null
 }
 
 export const EMPTY_DRAFT: Draft = { started_ms: null, weapon: null, outcome: null, target: null }
@@ -34,7 +35,8 @@ export function hasDraft(state: TaggingState): boolean {
 /**
  * Apply one key. Keys can come in any order and a repeated field is replaced.
  * When fighter, weapon, outcome, and target are all set, the draft is returned as
- * `complete` and a new empty draft starts, with the fighter kept.
+ * `complete` and a new empty draft starts, with the fighter kept. `save` (Enter)
+ * completes it without a target, once fighter, weapon, and outcome are set.
  */
 export function applyKey(
   state: TaggingState,
@@ -43,6 +45,15 @@ export function applyKey(
 ): { state: TaggingState; complete: CompleteDraft | null } {
   if (action.field === 'clear') {
     return { state: { ...state, draft: EMPTY_DRAFT }, complete: null }
+  }
+
+  if (action.field === 'save') {
+    const { started_ms: at, weapon: w, outcome: o, target: t } = state.draft
+    if (at === null || !state.fighter || !w || !o) return { state, complete: null }
+    return {
+      state: { fighter: state.fighter, draft: EMPTY_DRAFT },
+      complete: { timestamp_ms: at, fighter: state.fighter, weapon: w, outcome: o, target: t },
+    }
   }
 
   const started_ms = state.draft.started_ms ?? now_ms

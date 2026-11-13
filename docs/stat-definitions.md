@@ -206,7 +206,9 @@ target_share(f, t) = count(tags where fighter = f and outcome = "landed" and tar
 - Provisional rule: target distribution is calculated on **landed** strikes, because
   for missed strikes the target is a guess at intent. Also keep the attempts-based
   version available. Open question for Freefly which one they publish.
-- Zero landed: undefined.
+- The target is optional on a tag (ADR 0010). Shares are over the landed strikes
+  that have a target, so the three shares still add up to 100%.
+- Zero landed, or no landed strike with a target: undefined.
 
 Implemented: `target_distribution(tags, "landed" | "attempts")` in `core.py`.
 

@@ -104,6 +104,7 @@ export function roundAt(
 /** Apply a tagging key to the current suggestion's edits. Esc clears them. */
 export function editSuggestion(edits: ReviewEdits, action: HotkeyAction): ReviewEdits {
   if (action.field === 'clear') return {}
+  if (action.field === 'save') return edits
   return { ...edits, [action.field]: action.value }
 }
 
@@ -112,25 +113,34 @@ export function withEdits(tag: Tag, edits: ReviewEdits): Tag {
   return { ...tag, ...edits }
 }
 
-export type ConfirmPlan =
-  | { ok: true; patch: Required<ReviewEdits> & { status: 'confirmed' } }
-  | { ok: false; error: string }
+export interface ConfirmPatch {
+  fighter: Corner
+  weapon: Weapon
+  outcome: Outcome
+  /** Left out when the analyst set no target. */
+  target?: Target
+  status: 'confirmed'
+}
+
+export type ConfirmPlan = { ok: true; patch: ConfirmPatch } | { ok: false; error: string }
 
 /**
- * The PATCH that confirms a suggestion. A confirmed tag needs a weapon, an outcome,
- * and a target (tag.schema.json), so missing ones are named. The tag keeps
- * `source: cv` and its confidence: only these fields change.
+ * The PATCH that confirms a suggestion. A confirmed tag needs a weapon and an
+ * outcome (tag.schema.json), so missing ones are named. The target is optional
+ * (ADR 0010). The tag keeps `source: cv` and its confidence: only these fields change.
  */
 export function planConfirm(tag: Tag, edits: ReviewEdits): ConfirmPlan {
   const merged = withEdits(tag, edits)
-  const missing = (['weapon', 'outcome', 'target'] as const).filter((f) => merged[f] === null)
+  const missing = (['weapon', 'outcome'] as const).filter((f) => merged[f] === null)
   if (missing.length > 0) {
-    const names = missing.length === 3 ? 'weapon, outcome, and target' : missing.join(' and ')
-    return { ok: false, error: `Set the ${names} first, then press Enter.` }
+    return { ok: false, error: `Set the ${missing.join(' and ')} first, then press Enter.` }
   }
   const { fighter, weapon, outcome, target } = merged
-  if (weapon === null || outcome === null || target === null) {
-    return { ok: false, error: 'Set the weapon, outcome, and target first.' }
+  if (weapon === null || outcome === null) {
+    return { ok: false, error: 'Set the weapon and outcome first.' }
   }
-  return { ok: true, patch: { fighter, weapon, outcome, target, status: 'confirmed' } }
+  return {
+    ok: true,
+    patch: { fighter, weapon, outcome, ...(target ? { target } : {}), status: 'confirmed' },
+  }
 }

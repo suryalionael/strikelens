@@ -25,7 +25,9 @@ Human tags and CV suggestions use the same schema. A suggestion is a tag with
 | `created_by` | string | | Analyst username, or model name and version |
 | `created_at` | datetime | ISO 8601 UTC | |
 
-A `confirmed` tag must have a weapon, outcome, and target.
+A `confirmed` tag must have a weapon and an outcome. The target is optional
+([ADR 0010](decisions/0010-optional-target.md)): set it when the fight needs
+target stats, leave it out to tag faster.
 
 ## Strike taxonomy
 
@@ -99,6 +101,7 @@ One key per choice, no modifiers, so the analyst can keep one hand on the keyboa
 | Head | `1` |
 | Body | `2` |
 | Legs | `3` |
+| Save the tag without a target | `Enter` |
 | **Fighter** | |
 | Red | `Q` |
 | Blue | `W` |
@@ -121,8 +124,8 @@ tagging keys here, so jumps use `Shift` and `Alt` with the arrows.
 
 The suggestion keys work while **Review suggestions** is on. Then the weapon,
 outcome, target, and fighter keys change the current suggestion instead of
-starting a new tag. A suggestion is confirmed only with a weapon, an outcome, and
-a target, and keeps `source: cv` and its `confidence`.
+starting a new tag. A suggestion is confirmed only with a weapon and an outcome
+(the target is optional), and keeps `source: cv` and its `confidence`.
 
 ### How a tag is entered
 
@@ -131,7 +134,11 @@ fighter, weapon, outcome, and target, it saves at the video time when the first
 key of the draft was pressed. The fighter stays selected between tags, so most
 tags need only three keys: weapon, outcome, target.
 
-Example: `Q` `K` `L` `2` = red, kick, landed, body.
+`Enter` saves the draft without a target, once it has a fighter, a weapon, and an
+outcome.
+
+Examples: `Q` `K` `L` `2` = red, kick, landed, body. `K` `B` `Enter` = kick,
+blocked, no target.
 
 Rules (issue #8):
 

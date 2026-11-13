@@ -86,11 +86,11 @@ describe('TagPanel: reviewing suggestions', () => {
     key('Tab')
     expect(seek).toHaveBeenLastCalledWith(9) // a second before 0:10
     expect(screen.getByLabelText('Current suggestion')).toHaveTextContent(
-      'red kick · outcome? · target?',
+      'red kick · outcome? · no target',
     )
 
     key('Enter')
-    expect(screen.getByRole('status')).toHaveTextContent('Set the outcome and target first')
+    expect(screen.getByRole('status')).toHaveTextContent('Set the outcome first')
     expect(api.updateTag).not.toHaveBeenCalled()
 
     key('l')
@@ -199,7 +199,7 @@ describe('TagPanel: reviewing suggestions', () => {
     )
     key('Tab')
     expect(screen.getByLabelText('Current suggestion')).toHaveTextContent(
-      'red weapon? · outcome? · target?',
+      'red weapon? · outcome? · no target',
     )
     key('Tab')
     key('Tab') // wraps inside round 2, never to round 1
@@ -208,6 +208,22 @@ describe('TagPanel: reviewing suggestions', () => {
     fireEvent.change(screen.getByRole('combobox', { name: 'Round' }), { target: { value: 'all' } })
     expect(screen.getByLabelText('Review progress')).toHaveTextContent(
       'Whole fight: 0 of 3 reviewed · 3 pending',
+    )
+  })
+
+  it('confirms with only a weapon and an outcome', async () => {
+    renderPanel()
+    fireEvent.click(await screen.findByRole('button', { name: 'Review suggestions' }))
+    key('Tab')
+    key('b')
+    key('Enter')
+    await waitFor(() =>
+      expect(api.updateTag).toHaveBeenCalledWith('fight-1', 's1', {
+        fighter: 'red',
+        weapon: 'kick',
+        outcome: 'blocked',
+        status: 'confirmed',
+      }),
     )
   })
 })
