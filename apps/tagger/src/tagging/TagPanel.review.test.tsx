@@ -8,6 +8,7 @@ import { TagPanel } from './TagPanel'
 
 const FIGHT = { id: 'fight-1' } as Fight
 const ROUNDS: RoundDraft[] = [{ number: 1, start_ms: 1000, end_ms: 181000 }]
+const TWO_ROUNDS: RoundDraft[] = [...ROUNDS, { number: 2, start_ms: 190_000, end_ms: 370_000 }]
 const video = { currentTime: 0 } as HTMLVideoElement
 
 function suggestion(id: string, ms: number, confidence: number): Tag {
@@ -84,7 +85,9 @@ describe('TagPanel: reviewing suggestions', () => {
 
     key('Tab')
     expect(seek).toHaveBeenLastCalledWith(9) // a second before 0:10
-    expect(screen.getByLabelText('Current suggestion')).toHaveTextContent('red kick · — · —')
+    expect(screen.getByLabelText('Current suggestion')).toHaveTextContent(
+      'red kick · outcome? · target?',
+    )
 
     key('Enter')
     expect(screen.getByRole('status')).toHaveTextContent('Set the outcome and target first')
@@ -176,5 +179,35 @@ describe('TagPanel: reviewing suggestions', () => {
     key('Enter')
     expect(seek).not.toHaveBeenCalled()
     expect(api.updateTag).not.toHaveBeenCalled()
+  })
+
+  it('reviews one round at a time, starting with the round at the playhead', async () => {
+    vi.mocked(api.listTags).mockResolvedValue([
+      suggestion('a1', 10_000, 0.9),
+      { ...suggestion('b1', 200_000, 0.9), round: 2, weapon: null },
+      { ...suggestion('b2', 210_000, 0.9), round: 2 },
+    ])
+    video.currentTime = 195 // inside round 2
+    render(
+      <PlayerContext value={fakePlayer({ videoRef: { current: video }, seek })}>
+        <TagPanel fight={FIGHT} rounds={TWO_ROUNDS} />
+      </PlayerContext>,
+    )
+    fireEvent.click(await screen.findByRole('button', { name: 'Review suggestions' }))
+    expect(screen.getByLabelText('Review progress')).toHaveTextContent(
+      'Round 2: 0 of 2 reviewed · 2 pending',
+    )
+    key('Tab')
+    expect(screen.getByLabelText('Current suggestion')).toHaveTextContent(
+      'red weapon? · outcome? · target?',
+    )
+    key('Tab')
+    key('Tab') // wraps inside round 2, never to round 1
+    expect(seek).not.toHaveBeenCalledWith(9)
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Round' }), { target: { value: 'all' } })
+    expect(screen.getByLabelText('Review progress')).toHaveTextContent(
+      'Whole fight: 0 of 3 reviewed · 3 pending',
+    )
   })
 })

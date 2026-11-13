@@ -5,6 +5,7 @@ import {
   planConfirm,
   reviewKeyAction,
   reviewProgress,
+  roundAt,
   stepSuggestion,
 } from './review'
 
@@ -138,5 +139,27 @@ describe('editing and confirming a suggestion', () => {
   it('names a missing weapon too', () => {
     const plan = planConfirm(cv('a', 0, 1, { weapon: null }), { outcome: 'landed' })
     expect(plan).toEqual({ ok: false, error: 'Set the weapon and target first, then press Enter.' })
+  })
+})
+
+describe('reviewing one round', () => {
+  const tags = [cv('a', 10_000, 0.9), cv('b', 200_000, 0.9, { round: 2 })]
+  const reviewed = cv('c', 220_000, 0.9, { round: 2, status: 'rejected' })
+
+  it('keeps only the chosen round, or every round for null', () => {
+    expect(pendingSuggestions(tags, 0, 2).map((t) => t.id)).toEqual(['b'])
+    expect(pendingSuggestions(tags, 0, null).map((t) => t.id)).toEqual(['a', 'b'])
+    expect(reviewProgress([...tags, reviewed], 0, 2)).toEqual({ reviewed: 1, total: 2 })
+  })
+
+  it('starts in the round at the playhead, a break counting as the round before', () => {
+    const rounds = [
+      { number: 2, start_ms: 190_000 },
+      { number: 1, start_ms: 1000 },
+    ]
+    expect(roundAt(rounds, 195_000)).toBe(2)
+    expect(roundAt(rounds, 185_000)).toBe(1) // the break after round 1
+    expect(roundAt(rounds, 0)).toBe(1) // before the first round
+    expect(roundAt([], 5000)).toBeNull()
   })
 })
