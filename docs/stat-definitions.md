@@ -123,6 +123,10 @@ Not settled: **what counts as one attempt inside a combination.** Provisional ru
 every distinct strike in a combination is its own attempt (a jab-cross-hook is
 three attempts). Open question for Freefly.
 
+Not settled: **whether a feint is an attempt.** Provisional rule: a feint is not an
+attempt and is not tagged; an analyst who is unsure tags the strike, and a reviewer
+rejects a suggestion that turns out to be a feint. Open question 15 for Freefly.
+
 ## Landed
 
 ```
@@ -274,3 +278,7 @@ Further questions raised while writing these definitions:
     decides it. Do you follow the referee's call, or your own reading of the video?
 14. A calf kick only scores with judges when it has a visible effect. For
     "landed", does a calf kick count whenever it connects, or only with an effect?
+15. Is a feint an attempt? If a fighter starts a strike and pulls it back, do you
+    count it? If some feints count, where is the line: full extension, the hips
+    turning, the strike reaching the opponent's guard? This changes attempts,
+    accuracy, and strikes per minute, and what the suggestion model has to learn.
