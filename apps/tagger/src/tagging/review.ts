@@ -37,10 +37,19 @@ export function reviewKeyAction(event: KeyInput): ReviewKey | null {
 
 const isSuggestion = (tag: Tag) => tag.source === 'cv'
 
+/** Which round to review: one round number, or null for the whole fight. */
+export type RoundFilter = number | null
+
+const inRound = (tag: Tag, round: RoundFilter) => round === null || tag.round === round
+
 /** Pending CV suggestions at or above the confidence filter, in video order. */
-export function pendingSuggestions(tags: readonly Tag[], minConfidence: number): Tag[] {
+export function pendingSuggestions(
+  tags: readonly Tag[],
+  minConfidence: number,
+  round: RoundFilter = null,
+): Tag[] {
   return tags
-    .filter((t) => isSuggestion(t) && t.status === 'pending')
+    .filter((t) => isSuggestion(t) && t.status === 'pending' && inRound(t, round))
     .filter((t) => (t.confidence ?? 0) >= minConfidence)
     .sort((a, b) => a.timestamp_ms - b.timestamp_ms || a.id.localeCompare(b.id))
 }
@@ -49,8 +58,11 @@ export function pendingSuggestions(tags: readonly Tag[], minConfidence: number):
 export function reviewProgress(
   tags: readonly Tag[],
   minConfidence: number,
+  round: RoundFilter = null,
 ): { reviewed: number; total: number } {
-  const inFilter = tags.filter((t) => isSuggestion(t) && (t.confidence ?? 0) >= minConfidence)
+  const inFilter = tags.filter(
+    (t) => isSuggestion(t) && inRound(t, round) && (t.confidence ?? 0) >= minConfidence,
+  )
   return {
     reviewed: inFilter.filter((t) => t.status !== 'pending').length,
     total: inFilter.length,
@@ -73,6 +85,20 @@ export function stepSuggestion(
   return (
     [...others].reverse().find((t) => t.timestamp_ms < fromMs) ?? others[others.length - 1] ?? null
   )
+}
+
+/**
+ * The round to review when review starts: the last round that started at or before
+ * `ms` (so a break counts as the round before it), else the first round. Null when
+ * there are no rounds.
+ */
+export function roundAt(
+  rounds: readonly { number: number; start_ms: number }[],
+  ms: number,
+): number | null {
+  const sorted = [...rounds].sort((a, b) => a.start_ms - b.start_ms)
+  const started = sorted.filter((r) => r.start_ms <= ms)
+  return (started[started.length - 1] ?? sorted[0])?.number ?? null
 }
 
 /** Apply a tagging key to the current suggestion's edits. Esc clears them. */

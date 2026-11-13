@@ -8,6 +8,11 @@ interface Props {
   pendingCount: number
   progress: { reviewed: number; total: number }
   minConfidence: number
+  /** The round being reviewed, or null for the whole fight. */
+  round: number | null
+  /** Rounds that have suggestions, for the picker. */
+  rounds: readonly number[]
+  onRound: (round: number | null) => void
   busy: boolean
   onToggle: () => void
   onMinConfidence: (value: number) => void
@@ -17,6 +22,11 @@ interface Props {
 }
 
 const CORNER_TEXT: Record<Corner, string> = { red: 'text-red-400', blue: 'text-blue-400' }
+
+/** A field of the current suggestion, or a word saying it still has to be set. */
+function Field({ value, name }: { value: string | null; name: string }) {
+  return value === null ? <span className="text-amber-300">{name}?</span> : <>{value}</>
+}
 const button =
   'rounded border border-neutral-700 px-2 py-1 text-xs hover:bg-neutral-800 disabled:opacity-40'
 
@@ -27,6 +37,9 @@ export function ReviewBar({
   pendingCount,
   progress,
   minConfidence,
+  round,
+  rounds,
+  onRound,
   busy,
   onToggle,
   onMinConfidence,
@@ -49,8 +62,27 @@ export function ReviewBar({
         >
           {reviewing ? 'Stop reviewing' : 'Review suggestions'}
         </button>
+        <label className="flex items-center gap-2 text-xs text-neutral-400">
+          Round
+          <select
+            value={round ?? 'all'}
+            onChange={(event) => {
+              const value = event.currentTarget.value
+              onRound(value === 'all' ? null : Number(value))
+            }}
+            className="rounded border border-neutral-700 bg-neutral-900 px-1 py-0.5 text-neutral-100"
+          >
+            {rounds.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+            <option value="all">All</option>
+          </select>
+        </label>
         <span aria-label="Review progress" className="text-xs text-neutral-300">
-          {progress.reviewed} of {progress.total} reviewed · {pendingCount} pending
+          {round === null ? 'Whole fight' : `Round ${round}`}: {progress.reviewed} of{' '}
+          {progress.total} reviewed · {pendingCount} pending
         </span>
         <label className="ml-auto flex items-center gap-2 text-xs text-neutral-400">
           Min confidence
@@ -79,7 +111,9 @@ export function ReviewBar({
             <>
               <p aria-label="Current suggestion" className="text-xs">
                 <span className={CORNER_TEXT[current.fighter]}>{current.fighter}</span>{' '}
-                {current.weapon ?? '—'} · {current.outcome ?? '—'} · {current.target ?? '—'} at{' '}
+                <Field value={current.weapon} name="weapon" /> ·{' '}
+                <Field value={current.outcome} name="outcome" /> ·{' '}
+                <Field value={current.target} name="target" /> at{' '}
                 {formatTime(current.timestamp_ms / 1000)}
                 {current.confidence !== null && (
                   <span className="text-neutral-500">
@@ -107,8 +141,8 @@ export function ReviewBar({
             </>
           ) : (
             <p className="text-xs text-neutral-400">
-              Press Tab to jump to the next suggestion. Set the outcome and target with the usual
-              keys, then Enter to confirm or X to reject.
+              Press Tab to jump to the next suggestion. Set what is still blank (the motion model
+              guesses no weapon) with the usual keys, then Enter to confirm or X to reject.
             </p>
           )}
         </div>

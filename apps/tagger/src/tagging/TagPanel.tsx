@@ -17,10 +17,12 @@ import {
   planConfirm,
   reviewKeyAction,
   reviewProgress,
+  roundAt,
   stepSuggestion,
   withEdits,
   type ReviewEdits,
   type ReviewKey,
+  type RoundFilter,
 } from './review'
 import { ReviewBar } from './ReviewBar'
 import { TagEditor } from './TagEditor'
@@ -119,9 +121,10 @@ export function TagPanel({ fight, rounds, segments = NO_SEGMENTS, onTagsChanged 
   // Review mode (#26): keys and option buttons edit the current CV suggestion.
   const [reviewing, setReviewing] = useState(false)
   const [minConfidence, setMinConfidence] = useState(0)
+  const [reviewRound, setReviewRound] = useState<RoundFilter>(null)
   const [currentId, setCurrentId] = useState<string | null>(null)
   const [edits, setEdits] = useState<ReviewEdits>({})
-  const pending = pendingSuggestions(tags, minConfidence)
+  const pending = pendingSuggestions(tags, minConfidence, reviewRound)
   const current = reviewing ? (pending.find((t) => t.id === currentId) ?? null) : null
 
   useEffect(() => {
@@ -368,6 +371,9 @@ export function TagPanel({ fight, rounds, segments = NO_SEGMENTS, onTagsChanged 
     .sort((a, b) => b.timestamp_ms - a.timestamp_ms)
     .slice(0, RECENT_COUNT)
   const hasSuggestions = tags.some((t) => t.source === 'cv')
+  const suggestionRounds = [
+    ...new Set(tags.filter((t) => t.source === 'cv').map((t) => t.round)),
+  ].sort((a, b) => a - b)
   const shown = current ? withEdits(current, edits) : null
   // While reviewing, the option buttons show and set the current suggestion.
   const shownFighter = shown ? shown.fighter : fighter
@@ -405,10 +411,21 @@ export function TagPanel({ fight, rounds, segments = NO_SEGMENTS, onTagsChanged 
           reviewing={reviewing}
           current={shown}
           pendingCount={pending.length}
-          progress={reviewProgress(tags, minConfidence)}
+          progress={reviewProgress(tags, minConfidence, reviewRound)}
           minConfidence={minConfidence}
+          round={reviewRound}
+          rounds={suggestionRounds}
+          onRound={(round) => {
+            setReviewRound(round)
+            setCurrentId(null)
+            setEdits({})
+          }}
           busy={busy}
           onToggle={() => {
+            if (!reviewing) {
+              const now = Math.round((videoRef.current?.currentTime ?? 0) * 1000)
+              setReviewRound(roundAt(rounds, now))
+            }
             setReviewing((on) => !on)
             setCurrentId(null)
             setEdits({})
