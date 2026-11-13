@@ -110,6 +110,11 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Strike suggestions are trimmed for review: one per moment across both fighters
   (`merge_gap_ms`, 1 s), at most 50 per round (`max_per_round`), and none next to a
   tag already in the fight. `--replace` reruns without touching reviewed tags (#72).
+- Review mode works one round at a time: a round picker, set to the round at the
+  playhead, keeps Tab, progress, and the pending count inside it. Blank fields on
+  a suggestion read "weapon?", "outcome?", "target?" (#77).
+- Open question 15 for Freefly: is a feint an attempt? Until answered, feints are
+  not tagged (#5).
 
 ### Fixed
 
