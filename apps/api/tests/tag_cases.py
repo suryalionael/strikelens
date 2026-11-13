@@ -32,11 +32,14 @@ CV_SUGGESTION: dict[str, Any] = {
 }
 
 
+# A confirmed tag needs a weapon and an outcome; the target is optional (ADR 0010).
 def _with(base: dict[str, Any], **changes: Any) -> dict[str, Any]:
     tag = copy.deepcopy(base)
     tag.update(changes)
     return tag
 
+
+CONFIRMED_WITHOUT_TARGET: dict[str, Any] = _with(HUMAN_TAG, target=None)
 
 INVALID_TAGS: dict[str, dict[str, Any]] = {
     "bad-fighter": _with(HUMAN_TAG, fighter="green"),
@@ -50,6 +53,7 @@ INVALID_TAGS: dict[str, dict[str, Any]] = {
     "confidence-above-one": _with(CV_SUGGESTION, confidence=1.5),
     "human-with-confidence": _with(HUMAN_TAG, confidence=0.9),
     "confirmed-without-outcome": _with(HUMAN_TAG, outcome=None),
+    "confirmed-without-weapon": _with(HUMAN_TAG, weapon=None),
     "blank-created-by": _with(HUMAN_TAG, created_by=""),
     "rejected-cv-with-confidence-below-zero": _with(
         CV_SUGGESTION, status="rejected", confidence=-0.1

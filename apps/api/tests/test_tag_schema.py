@@ -8,7 +8,7 @@ from typing import Any
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
 
-from tests.tag_cases import CV_SUGGESTION, HUMAN_TAG, INVALID_TAGS
+from tests.tag_cases import CONFIRMED_WITHOUT_TARGET, CV_SUGGESTION, HUMAN_TAG, INVALID_TAGS
 
 SCHEMA_DIR = Path(__file__).resolve().parents[3] / "shared" / "schema"
 
@@ -28,6 +28,10 @@ def test_schemas_are_valid_draft_2020_12(name: str) -> None:
 
 def test_human_tag_is_valid() -> None:
     VALIDATOR.validate(HUMAN_TAG)
+
+
+def test_confirmed_tag_without_a_target_is_valid() -> None:
+    VALIDATOR.validate(CONFIRMED_WITHOUT_TARGET)
 
 
 def test_pending_cv_suggestion_is_valid() -> None:

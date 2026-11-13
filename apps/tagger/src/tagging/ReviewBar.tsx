@@ -113,7 +113,7 @@ export function ReviewBar({
                 <span className={CORNER_TEXT[current.fighter]}>{current.fighter}</span>{' '}
                 <Field value={current.weapon} name="weapon" /> ·{' '}
                 <Field value={current.outcome} name="outcome" /> ·{' '}
-                <Field value={current.target} name="target" /> at{' '}
+                {current.target ?? <span className="text-neutral-500">no target</span>} at{' '}
                 {formatTime(current.timestamp_ms / 1000)}
                 {current.confidence !== null && (
                   <span className="text-neutral-500">
@@ -141,8 +141,9 @@ export function ReviewBar({
             </>
           ) : (
             <p className="text-xs text-neutral-400">
-              Press Tab to jump to the next suggestion. Set what is still blank (the motion model
-              guesses no weapon) with the usual keys, then Enter to confirm or X to reject.
+              Press Tab to jump to the next suggestion. Set the weapon and outcome (the motion model
+              guesses neither) with the usual keys, then Enter to confirm or X to reject. The target
+              is optional.
             </p>
           )}
         </div>

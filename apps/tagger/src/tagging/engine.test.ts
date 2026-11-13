@@ -120,4 +120,28 @@ describe('applyKey', () => {
     ])
     expect(completed[0]).toMatchObject({ timestamp_ms: 3000, weapon: 'knee' })
   })
+
+  it('saves without a target on Enter, once fighter, weapon, and outcome are set', () => {
+    const save: HotkeyAction = { field: 'save' }
+    const early = press([
+      [fighter('red'), 1000],
+      [weapon('jab'), 1100],
+      [save, 1200],
+    ])
+    expect(early.completed).toEqual([]) // no outcome yet: Enter does nothing
+    expect(early.state.draft.weapon).toBe('jab')
+
+    const { state, completed } = press(
+      [
+        [outcome('blocked'), 1300],
+        [save, 1400],
+      ],
+      early.state,
+    )
+    expect(completed).toEqual([
+      { timestamp_ms: 1000, fighter: 'red', weapon: 'jab', outcome: 'blocked', target: null },
+    ])
+    expect(state).toEqual({ fighter: 'red', draft: EMPTY_DRAFT })
+    expect(applyKey(state, save, 2000).complete).toBeNull() // nothing to save
+  })
 })

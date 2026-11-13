@@ -86,6 +86,20 @@ describe('TagPanel', () => {
     expect(screen.getByText('1 tags')).toBeInTheDocument()
   })
 
+  it('saves Q K B Enter without a target', async () => {
+    renderPanel()
+    keys('q', 'k', 'b')
+    expect(api.createTag).not.toHaveBeenCalled()
+    keys('Enter')
+    await waitFor(() =>
+      expect(api.createTag).toHaveBeenCalledWith(
+        'fight-1',
+        expect.objectContaining({ weapon: 'kick', outcome: 'blocked', target: null }),
+      ),
+    )
+    await waitFor(() => expect(screen.getByRole('table')).toHaveTextContent('kick · blocked'))
+  })
+
   it('tells the app when a tag is saved', async () => {
     const onTagsChanged = vi.fn()
     render(
