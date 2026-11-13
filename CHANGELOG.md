@@ -107,6 +107,9 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - The stats panel loads on demand, so the tagger's first download drops from 678 kB
   to 280 kB (#70).
+- Strike suggestions are trimmed for review: one per moment across both fighters
+  (`merge_gap_ms`, 1 s), at most 50 per round (`max_per_round`), and none next to a
+  tag already in the fight. `--replace` reruns without touching reviewed tags (#72).
 
 ### Fixed
 
