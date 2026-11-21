@@ -96,8 +96,7 @@
       "then": {
         "properties": {
           "weapon": { "type": "string" },
-          "outcome": { "type": "string" },
-          "target": { "type": "string" }
+          "outcome": { "type": "string" }
         }
       }
     }

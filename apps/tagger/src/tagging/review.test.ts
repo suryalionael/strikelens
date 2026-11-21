@@ -101,10 +101,15 @@ describe('editing and confirming a suggestion', () => {
     expect(editSuggestion(edited, { field: 'clear' })).toEqual({})
   })
 
-  it('needs an outcome and a target before it confirms', () => {
+  it('needs an outcome before it confirms, and the target is optional', () => {
     expect(planConfirm(cv('a', 0, 1), {})).toEqual({
       ok: false,
-      error: 'Set the outcome and target first, then press Enter.',
+      error: 'Set the outcome first, then press Enter.',
+    })
+    // No target set: it is left out of the patch, so the tag keeps a null target.
+    expect(planConfirm(cv('a', 0, 1), { outcome: 'blocked' })).toEqual({
+      ok: true,
+      patch: { fighter: 'red', weapon: 'kick', outcome: 'blocked', status: 'confirmed' },
     })
     expect(planConfirm(cv('a', 0, 1), { outcome: 'landed', target: 'head' })).toEqual({
       ok: true,
@@ -128,17 +133,17 @@ describe('editing and confirming a suggestion', () => {
     expect(plan.ok && plan.patch).toMatchObject({ weapon: 'teep', fighter: 'blue' })
   })
 
-  it('names all three when nothing is set', () => {
+  it('names the weapon and outcome when nothing is set', () => {
     const plan = planConfirm(cv('a', 0, 1, { weapon: null }), {})
     expect(plan).toEqual({
       ok: false,
-      error: 'Set the weapon, outcome, and target first, then press Enter.',
+      error: 'Set the weapon and outcome first, then press Enter.',
     })
   })
 
   it('names a missing weapon too', () => {
     const plan = planConfirm(cv('a', 0, 1, { weapon: null }), { outcome: 'landed' })
-    expect(plan).toEqual({ ok: false, error: 'Set the weapon and target first, then press Enter.' })
+    expect(plan).toEqual({ ok: false, error: 'Set the weapon first, then press Enter.' })
   })
 })
 

@@ -7,6 +7,8 @@ export type HotkeyAction =
   | { field: 'outcome'; value: Outcome }
   | { field: 'target'; value: Target }
   | { field: 'clear' }
+  /** Save the draft as it is, without a target (Enter). */
+  | { field: 'save' }
 
 export type Hotkeys = Readonly<Record<string, HotkeyAction>>
 
@@ -31,6 +33,7 @@ export const DEFAULT_HOTKEYS: Hotkeys = {
   '1': { field: 'target', value: 'head' },
   '2': { field: 'target', value: 'body' },
   '3': { field: 'target', value: 'legs' },
+  enter: { field: 'save' },
   escape: { field: 'clear' },
 }
 
@@ -49,7 +52,7 @@ export function hotkeyAction(event: KeyInput, hotkeys: Hotkeys = DEFAULT_HOTKEYS
   return hotkeys[event.key.toLowerCase()] ?? null
 }
 
-type ValueField = Exclude<HotkeyAction['field'], 'clear'>
+type ValueField = Exclude<HotkeyAction['field'], 'clear' | 'save'>
 
 function binding(field: ValueField, value: string, hotkeys: Hotkeys) {
   return Object.entries(hotkeys).find(

@@ -35,7 +35,7 @@ def tag(
     ms: int = 10_000,
     weapon: str = "jab",
     outcome: str = "landed",
-    target: str = "head",
+    target: str | None = "head",
     status: str = "confirmed",
     source: str = "human",
 ) -> dict[str, Any]:
@@ -173,6 +173,16 @@ class TestTargetDistribution:
     def test_attempts_basis_counts_everything(self) -> None:
         dist = target_distribution(list(self.TAGS), "attempts")
         assert dist["legs"] == {"count": 1, "share": 0.25}
+
+    def test_tags_without_a_target_are_left_out_of_the_shares(self) -> None:
+        tags = [tag(target="head"), tag(target="body"), tag(target=None), tag(target=None)]
+        dist = target_distribution(tags, "landed")
+        assert dist["head"] == {"count": 1, "share": 0.5}
+        assert dist["body"] == {"count": 1, "share": 0.5}
+
+    def test_no_targets_set_is_undefined(self) -> None:
+        dist = target_distribution([tag(target=None)], "landed")
+        assert all(entry == {"count": 0, "share": None} for entry in dist.values())
 
     def test_zero_landed_is_undefined(self) -> None:
         dist = target_distribution([tag(outcome="missed")], "landed")

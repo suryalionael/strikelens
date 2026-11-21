@@ -25,7 +25,7 @@ Hotkey tagging. See issue #8 and the rules in
 - `TagEditor.tsx`: change or delete the selected tag. Delete asks first.
 - `review.ts`: pure review of CV suggestions (#26): which are pending above the
   confidence filter, stepping to the next or previous by time, the analyst's
-  edits, and the confirm patch (a confirmed tag needs weapon, outcome, and target).
+  edits, and the confirm patch (a confirmed tag needs a weapon and an outcome; the target is optional).
 - `ReviewBar.tsx`: shown when the fight has CV suggestions. Review on: Tab and
   Shift+Tab jump to the next or previous pending suggestion and play from a second
   before it; the usual tagging keys and buttons change it instead of starting a new

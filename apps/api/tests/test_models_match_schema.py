@@ -10,7 +10,7 @@ from jsonschema import Draft202012Validator, FormatChecker
 from pydantic import BaseModel, ValidationError
 
 from app.models.schemas import Fight, Fighter, Tag
-from tests.tag_cases import CV_SUGGESTION, HUMAN_TAG, INVALID_TAGS
+from tests.tag_cases import CONFIRMED_WITHOUT_TARGET, CV_SUGGESTION, HUMAN_TAG, INVALID_TAGS
 
 SCHEMA_DIR = Path(__file__).resolve().parents[3] / "shared" / "schema"
 
@@ -30,7 +30,12 @@ def _pydantic_accepts(model: type[BaseModel], data: dict[str, Any]) -> bool:
 
 TAG_VALIDATOR = _validator("tag.schema.json")
 
-TAG_CASES = {"human": HUMAN_TAG, "cv-pending": CV_SUGGESTION, **INVALID_TAGS}
+TAG_CASES = {
+    "human": HUMAN_TAG,
+    "cv-pending": CV_SUGGESTION,
+    "confirmed-without-target": CONFIRMED_WITHOUT_TARGET,
+    **INVALID_TAGS,
+}
 for _field in TAG_VALIDATOR.schema["required"]:
     TAG_CASES[f"missing-{_field}"] = {k: v for k, v in HUMAN_TAG.items() if k != _field}
 

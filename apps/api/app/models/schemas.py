@@ -173,8 +173,9 @@ class TagFields(StrictModel):
             raise ValueError("CV tags need a confidence")
         if self.source == "human" and self.confidence is not None:
             raise ValueError("human tags must have a null confidence")
-        if self.status == "confirmed" and None in (self.weapon, self.outcome, self.target):
-            raise ValueError("confirmed tags need weapon, outcome, and target")
+        # The target is optional (ADR 0010): Freefly's breakdowns do not use it.
+        if self.status == "confirmed" and None in (self.weapon, self.outcome):
+            raise ValueError("confirmed tags need a weapon and an outcome")
         return self
 
 

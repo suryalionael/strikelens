@@ -35,7 +35,7 @@ PROVISIONAL_RULES: tuple[str, ...] = (
     "Strikes on the guard and checked kicks count as blocked, not landed.",
     "Strikes per minute uses attempts, not landed strikes.",
     "Pauses inside a round count as fight time.",
-    "Target distribution is based on landed strikes; the attempts version is also shown.",
+    "Target distribution is based on landed strikes that have a target set.",
     "When fewer rounds are marked than scheduled, the last marked round is partial.",
     "Tags inside replays and non-fight segments are not counted.",
     "Replays and non-fight segments still count as round time.",
@@ -251,9 +251,11 @@ def target_distribution(
 
     Provisional: the headline version uses landed strikes, because for a missed
     strike the target is a guess at intent. The attempts version is kept too
-    (open question 8).
+    (open question 8). The target is optional on a tag (ADR 0010), so shares are
+    over the strikes that have one, and undefined when none does.
     """
     pool = [t for t in tags if t["outcome"] == "landed"] if basis == "landed" else list(tags)
+    pool = [t for t in pool if t["target"] is not None]
     counts = Counter(t["target"] for t in pool)
     return {k: {"count": counts[k], "share": share(counts[k], len(pool))} for k in TARGETS}
 

@@ -324,6 +324,9 @@ export function TagPanel({ fight, rounds, segments = NO_SEGMENTS, onTagsChanged 
       goTo(key === 'next' ? 1 : -1, current?.timestamp_ms)
     } else if (current) {
       decide(current, key === 'confirm' ? 'confirm' : 'reject')
+    } else if (key === 'confirm') {
+      // No suggestion is selected: Enter saves a strike the analyst is tagging by hand.
+      handle({ field: 'save' })
     }
   }
 
@@ -492,13 +495,24 @@ export function TagPanel({ fight, rounds, segments = NO_SEGMENTS, onTagsChanged 
               </p>
             )}
             {draft.started_ms !== null && (
-              <button
-                type="button"
-                className="ml-auto text-xs text-neutral-400 underline hover:text-neutral-100"
-                onClick={() => handle({ field: 'clear' })}
-              >
-                Clear (Esc)
-              </button>
+              <span className="ml-auto flex gap-3">
+                {fighter && draft.weapon && draft.outcome && (
+                  <button
+                    type="button"
+                    className="text-xs text-emerald-300 underline hover:text-emerald-100"
+                    onClick={() => handle({ field: 'save' })}
+                  >
+                    Save without target (Enter)
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="text-xs text-neutral-400 underline hover:text-neutral-100"
+                  onClick={() => handle({ field: 'clear' })}
+                >
+                  Clear (Esc)
+                </button>
+              </span>
             )}
           </div>
 
@@ -584,7 +598,7 @@ export function TagPanel({ fight, rounds, segments = NO_SEGMENTS, onTagsChanged 
                 <td>{tag.round}</td>
                 <td className={CORNER_TEXT[tag.fighter]}>{CORNER_LABEL[tag.fighter]}</td>
                 <td>
-                  {[tag.weapon, tag.outcome, tag.target].join(' · ')}
+                  {[tag.weapon, tag.outcome, tag.target].filter(Boolean).join(' · ')}
                   {segmentNote(segments, tag.timestamp_ms) && (
                     <span
                       className="ml-2 rounded border border-amber-700 px-1 text-[10px] text-amber-300"
