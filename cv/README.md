@@ -438,6 +438,20 @@ It writes `overlay.mp4` (or `overlay-round-<N>.mp4`): H.264, which plays in
 browsers and on phones. Every frame carries the `credit` line from
 `configs/overlay.toml`.
 
+A stat panel sits top left (after mma-vision's broadcast panel, ADR 0011): the
+round and its clock, then thrown, landed, and accuracy per fighter, counted from
+the confirmed tags up to that moment with the same rules as the stats (inside a
+round, outside replays; accuracy is "--" before the first attempt). For about a
+second after each tag, its label (for example `KICK / LANDED / BODY`) shows above
+the fighter. Names come from `--red` and `--blue`:
+
+```bash
+uv run strikelens-cv overlay --fight "Byon 40 main event" --round 1 --red Topnoi --blue Meven
+```
+
+`stat_panel`, `panel_alpha`, and `flash_ms` in `configs/overlay.toml` turn these off
+or tune them.
+
 **Writing corrections.** `--ids` draws every person instead, labelled with shot
 and track ID (`s3 t12`), in red or blue when the track was assigned to a corner
 and grey otherwise. Use it to write `track-corrections.json` (see Corrections).

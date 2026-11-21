@@ -171,6 +171,8 @@ def build_parser() -> argparse.ArgumentParser:
     overlay.add_argument(
         "--config", type=Path, default=DEFAULT_OVERLAY_CONFIG, help="TOML settings file"
     )
+    overlay.add_argument("--red", help="red corner's name on the stat panel")
+    overlay.add_argument("--blue", help="blue corner's name on the stat panel")
     return parser
 
 
@@ -327,7 +329,8 @@ def run_overlay(args: argparse.Namespace) -> int:
     from strikelens_cv.overlay import load_overlay_config, overlay
 
     try:
-        result = overlay(args.fight, load_overlay_config(args.config), args.round, args.ids)
+        names = {k: v for k, v in (("red", args.red), ("blue", args.blue)) if v}
+        result = overlay(args.fight, load_overlay_config(args.config), args.round, args.ids, names)
     except (FileNotFoundError, RuntimeError, ValueError) as error:
         print(f"strikelens-cv overlay: {error}", file=sys.stderr)
         return 1
