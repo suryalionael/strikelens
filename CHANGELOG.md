@@ -115,6 +115,9 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   a suggestion read "weapon?", "outcome?", "target?" (#77).
 - Open question 15 for Freefly: is a feint an attempt? Until answered, feints are
   not tagged (#5).
+- The target is optional on a confirmed tag. Enter saves a tag without one, and
+  confirms a suggestion once it has a weapon and an outcome. Target shares cover
+  the strikes that have a target (ADR 0010, #79).
 
 ### Fixed
 
