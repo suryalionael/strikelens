@@ -16,6 +16,11 @@ class OverlayConfig:
     timeline_height: int = 48
     crf: int = 20
     credit: str = "Footage: Byon Combat. Analysis: StrikeLens"
+    stat_panel: bool = True
+    panel_alpha: float = 0.75
+    flash_ms: int = 900
+    red_name: str = ""
+    blue_name: str = ""
 
     def __post_init__(self) -> None:
         if not 0 <= self.min_visibility <= 1:
@@ -24,6 +29,10 @@ class OverlayConfig:
             raise ValueError("timeline_height must be between 16 and 400 pixels")
         if not 0 <= self.crf <= 51:
             raise ValueError("crf must be between 0 and 51")
+        if not 0 <= self.panel_alpha <= 1:
+            raise ValueError("panel_alpha must be between 0 and 1")
+        if self.flash_ms < 0:
+            raise ValueError("flash_ms must be at least 0")
 
     def as_dict(self) -> dict[str, Any]:
         return asdict(self)

@@ -17,6 +17,7 @@ from typing import Any
 from strikelens_cv.ingest.frames import ffmpeg_binary
 from strikelens_cv.overlay.config import OverlayConfig
 from strikelens_cv.overlay.core import (
+    PANEL_HEIGHT_REF,
     Dot,
     Label,
     Line,
@@ -25,16 +26,21 @@ from strikelens_cv.overlay.core import (
     confirmed_tags,
     corner_owners,
     corner_shapes,
+    counted_tags,
     credit_shape,
+    flash_shapes,
     frames_to_render,
     id_shapes,
     output_name,
     render_span,
+    round_clock,
+    running_counts,
+    stat_panel_shapes,
     timeline_shapes,
 )
 from strikelens_cv.paths import processed_dir
 from strikelens_cv.pose.core import CORNERS, Corner, FramePose
-from strikelens_cv.segments import Round, load_rounds
+from strikelens_cv.segments import Round, load_rounds, load_segments
 from strikelens_cv.track.assign import Detection
 
 
@@ -64,7 +70,16 @@ def draw(canvas: Any, shapes: Sequence[Shape]) -> None:
     import cv2
 
     for s in shapes:
-        if isinstance(s, Rect):
+        if isinstance(s, Rect) and s.alpha < 1 and s.thickness < 0:
+            (x1, y1), (x2, y2) = s.top_left, s.bottom_right
+            area = canvas[y1 : y2 + 1, x1 : x2 + 1]
+            if area.size:
+                solid = area.copy()
+                solid[:] = s.colour
+                canvas[y1 : y2 + 1, x1 : x2 + 1] = cv2.addWeighted(
+                    area, 1 - s.alpha, solid, s.alpha, 0
+                )
+        elif isinstance(s, Rect):
             cv2.rectangle(canvas, s.top_left, s.bottom_right, s.colour, s.thickness)
         elif isinstance(s, Line):
             cv2.line(canvas, s.start, s.end, s.colour, s.thickness, cv2.LINE_AA)
@@ -117,7 +132,11 @@ def encoder_command(
 
 
 def overlay(
-    fight: str, config: OverlayConfig, round_number: int | None = None, ids: bool = False
+    fight: str,
+    config: OverlayConfig,
+    round_number: int | None = None,
+    ids: bool = False,
+    names: dict[Corner, str] | None = None,
 ) -> OverlayResult:
     """Render one fight, one round of it, or its track IDs into data/processed/<fight>/."""
     out_dir = processed_dir(fight)
@@ -126,9 +145,15 @@ def overlay(
     tracks = _read(out_dir / "tracks.json", "run strikelens-cv track first")
     fight_json = out_dir / "fight.json"
     rounds = load_rounds(fight_json) if fight_json.is_file() else []
+    segments = load_segments(fight_json) if fight_json.is_file() else []
     tags_file = out_dir / "tags.json"
     tags = confirmed_tags(json.loads(tags_file.read_text())) if tags_file.is_file() else []
     poses = {corner: _poses(out_dir / "keypoints" / f"{corner}.json") for corner in CORNERS}
+    counted = counted_tags(tags, rounds, segments)
+    labels: dict[Corner, str] = {
+        "red": (names or {}).get("red") or config.red_name or "RED",
+        "blue": (names or {}).get("blue") or config.blue_name or "BLUE",
+    }
 
     frames = frames_to_render(labelled["frames"], rounds, round_number)
     if not frames:
@@ -157,6 +182,7 @@ def overlay(
         return picture
 
     height, width = image(frames[0]["index"]).shape[:2]
+    panel_scale = max(1.0, height / PANEL_HEIGHT_REF)
     # yuv420p needs an even width and height.
     out_width = width - width % 2
     out_height = height + config.timeline_height
@@ -182,6 +208,18 @@ def overlay(
                 }
                 track_frame = by_index.get(frame["index"])
                 shapes = corner_shapes(track_frame, now, config) if track_frame else []
+                if config.flash_ms:
+                    shapes += flash_shapes(
+                        counted, track_frame, frame["timestamp_ms"], config.flash_ms, panel_scale
+                    )
+                if config.stat_panel:
+                    shapes += stat_panel_shapes(
+                        running_counts(counted, frame["timestamp_ms"]),
+                        round_clock(rounds, frame["timestamp_ms"]),
+                        labels,
+                        config.panel_alpha,
+                        panel_scale,
+                    )
             shapes.append(credit_shape(config.credit))
             shapes += timeline_shapes(
                 tags,

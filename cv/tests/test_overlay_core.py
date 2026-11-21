@@ -15,7 +15,24 @@ from strikelens_cv.overlay import (
     skeleton_shapes,
     timeline_shapes,
 )
-from strikelens_cv.overlay.core import BLUE, GREY, JOINTS, RED, WHITE, Label, Line, Rect
+from strikelens_cv.overlay.core import (
+    BLUE,
+    GREY,
+    JOINTS,
+    RED,
+    WHITE,
+    Label,
+    Line,
+    Rect,
+    accuracy_text,
+    clock_text,
+    counted_tags,
+    flash_shapes,
+    round_clock,
+    running_counts,
+    stat_panel_shapes,
+    strike_label,
+)
 from strikelens_cv.pose.core import MEDIAPIPE_LANDMARKS
 from strikelens_cv.track.assign import FrameInfo
 from tests.track_cases import BLUE_SHORTS, RED_SHORTS, person
@@ -171,3 +188,93 @@ def test_id_shapes_colour_by_corner() -> None:
         ("s3 t2", BLUE),
         ("s3 t9", GREY),
     ]
+
+
+# The stat panel and strike flashes (#22)
+
+
+PANEL_ROUNDS = [
+    {"number": 1, "start_ms": 10_000, "end_ms": 190_000},
+    {"number": 2, "start_ms": 250_000, "end_ms": 430_000},
+]
+
+
+def ptag(ms: int, fighter: str, outcome: str = "landed", status: str = "confirmed") -> dict:
+    return {
+        "timestamp_ms": ms,
+        "fighter": fighter,
+        "weapon": "kick",
+        "outcome": outcome,
+        "target": "body",
+        "status": status,
+    }
+
+
+def test_only_tags_the_stats_count_reach_the_panel() -> None:
+    tags = [
+        ptag(20_000, "red"),
+        ptag(21_000, "red", status="pending"),
+        ptag(200_000, "red"),  # between rounds
+        ptag(30_000, "blue"),  # inside a replay
+    ]
+    replay = [{"kind": "replay", "start_ms": 29_000, "end_ms": 31_000}]
+    assert counted_tags(tags, PANEL_ROUNDS, replay) == [tags[0]]
+
+
+def test_counts_run_with_the_video() -> None:
+    tags = [ptag(20_000, "red"), ptag(25_000, "red", "missed"), ptag(26_000, "blue", "blocked")]
+    assert running_counts(tags, 19_999) == {"red": (0, 0), "blue": (0, 0)}
+    assert running_counts(tags, 25_000) == {"red": (2, 1), "blue": (0, 0)}
+    assert running_counts(tags, 99_000) == {"red": (2, 1), "blue": (1, 0)}
+
+
+def test_accuracy_is_a_dash_with_nothing_thrown_not_zero() -> None:
+    assert accuracy_text(0, 0) == "--"
+    assert accuracy_text(3, 0) == "0%"
+    assert accuracy_text(3, 2) == "67%"
+
+
+def test_round_clock_runs_in_a_round_and_holds_between_rounds() -> None:
+    assert round_clock(PANEL_ROUNDS, 5_000) is None
+    assert round_clock(PANEL_ROUNDS, 75_000) == (1, 65_000)
+    assert round_clock(PANEL_ROUNDS, 220_000) == (1, 180_000)  # the break holds 3:00
+    assert round_clock(PANEL_ROUNDS, 251_000) == (2, 1_000)
+    assert clock_text(65_000) == "1:05" and clock_text(180_000) == "3:00"
+
+
+def test_panel_shows_round_clock_names_and_counts() -> None:
+    shapes = stat_panel_shapes(
+        {"red": (12, 5), "blue": (0, 0)}, (2, 65_000), {"red": "Topnoi", "blue": "Meven"}, 0.75
+    )
+    texts = [s.text for s in shapes if isinstance(s, Label)]
+    assert "ROUND 2" in texts and "1:05" in texts
+    assert "Topnoi" in texts and "Meven" in texts
+    assert " 12" in texts and "  5" in texts and " 42%" in texts and "  --" in texts
+    assert "Counts: analyst-confirmed tags" in texts
+    background = shapes[0]
+    assert isinstance(background, Rect) and background.alpha == 0.75 and background.thickness == -1
+
+
+def test_a_strike_flashes_above_its_fighter_for_a_moment() -> None:
+    frame = {"index": 0, "timestamp_ms": 0, "red": [100.0, 200.0, 200.0, 500.0], "blue": None}
+    tags = [ptag(20_000, "red"), ptag(20_000, "blue")]
+    [flash] = flash_shapes(tags, frame, 20_500, 900)  # blue has no box: no label
+    assert isinstance(flash, Label) and flash.text == "KICK / LANDED / BODY"
+    assert flash.at == (100, 170) and flash.colour == RED
+    assert flash_shapes(tags, frame, 21_000, 900) == []  # over 900 ms later
+    assert flash_shapes(tags, frame, 19_000, 900) == []  # before the strike
+
+
+def test_strike_label_leaves_out_what_is_not_set() -> None:
+    assert strike_label({"weapon": "jab", "outcome": "blocked", "target": None}) == "JAB / BLOCKED"
+    assert strike_label({}) == "STRIKE"
+
+
+def test_the_panel_scales_with_the_frame() -> None:
+    small = stat_panel_shapes({"red": (1, 1), "blue": (0, 0)}, (1, 0), {}, 0.75)
+    big = stat_panel_shapes({"red": (1, 1), "blue": (0, 0)}, (1, 0), {}, 0.75, scale=1.5)
+    assert isinstance(small[0], Rect) and isinstance(big[0], Rect)
+    assert big[0].bottom_right[0] - big[0].top_left[0] == round(
+        1.5 * (small[0].bottom_right[0] - small[0].top_left[0])
+    )
+    assert next(s.scale for s in big if isinstance(s, Label)) == 0.75

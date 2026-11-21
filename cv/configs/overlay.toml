@@ -14,3 +14,18 @@ crf = 20
 # Credit line drawn on every frame. Required before sharing a clip outside the
 # team (docs/data-policy.md, Demo material).
 credit = "Footage: Byon Combat. Analysis: StrikeLens"
+
+# The stat panel (top left): round, clock, and per fighter thrown, landed, and
+# accuracy, counted from confirmed tags as the video plays (same rules as the stats).
+stat_panel = true
+
+# Opacity of the panel's dark background, 0 (clear) to 1 (solid).
+panel_alpha = 0.75
+
+# How long a strike's label (for example KICK / LANDED / BODY) shows above the
+# fighter after the tag's time, in milliseconds. 0 turns it off.
+flash_ms = 900
+
+# Names on the panel. Empty = RED and BLUE. `--red` and `--blue` override these.
+red_name = ""
+blue_name = ""
