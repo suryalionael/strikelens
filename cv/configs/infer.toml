@@ -1,9 +1,12 @@
 # Settings for strike suggestions (`strikelens-cv suggest-strikes`). Safe to commit.
 # Windows have the shape set in windows.toml, so the model sees what it learned on.
 
-# Which model scores the windows. "motion-baseline" needs no training: it scores
-# how fast the wrists, elbows, knees, and ankles move. It is a stand-in until a
-# trained model (#24) exists, and the baseline that model has to beat.
+# Which model suggests strikes. "motion-baseline" needs no training: it scores how
+# fast the wrists, elbows, knees, and ankles move. It is a stand-in until a trained
+# model (#24) exists, and the baseline that model has to beat. "geometry" (ADR 0011,
+# settings in geometry.toml) uses rules over both fighters' poses, ported from
+# mma-vision, and prefills weapon, outcome, and target; threshold and min_gap_ms
+# below do not apply to it.
 model = "motion-baseline"
 
 # A window is scored every this many milliseconds, for each fighter.

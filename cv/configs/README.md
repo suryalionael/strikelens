@@ -10,4 +10,5 @@ hold settings only, never paths to footage.
 - `pose.toml`: pose backend, model file, box margin, and lowest pose confidence for `strikelens-cv pose`.
 - `rounds.toml`: where to look for the broadcast scoreboard and how its time on screen becomes rounds (`strikelens-cv rounds`, also run by ingest).
 - `windows.toml`: training window length, samples, missing data, negatives, and the validation split for `strikelens-cv windows`.
+- `geometry.toml`: thresholds for the geometry strike model (ADR 0011), in torso-heights and milliseconds.
 - `infer.toml`: the model, how often to score, and the peak threshold and gap, the merge gap across fighters, and the cap per round for `strikelens-cv suggest-strikes`.

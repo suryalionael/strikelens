@@ -1,0 +1,53 @@
+# Settings for the geometry strike model (`model = "geometry"` in infer.toml).
+# Ported from mma-vision by Binyam Abraha (ADR 0011). His thresholds counted frames at
+# about 30 fps; here speeds are in torso-heights per second and times in milliseconds,
+# so they work at any frame rate. Distances are in torso-heights (shoulder-mid to
+# hip-mid), so they do not depend on camera zoom. Safe to commit: no paths to footage.
+
+# Keypoint cleanup
+min_visibility = 0.3          # MediaPipe visibility below this = unknown joint
+scale_window_ms = 1500        # rolling median of torso height
+gap_ms = 200                  # fill gaps in a joint up to this long
+max_step_ms = 250             # no speed across a longer gap
+smooth_alpha_30fps = 0.65     # smoothing weight per 1/30 s; 1 = none
+max_limb_len = 1.0            # multiplier on the longest possible limb lengths
+
+# Candidates
+punch_speed = 4.8             # wrist speed (torso/s) to count as a strike; jitter is about 4.5
+kick_speed = 6.0              # ankle speed; kicks are faster than steps
+toward_cos = 0.3              # limb must move toward the opponent (low enough for hooks)
+min_kick_lift = 0.3           # kicking ankle must rise this far above the standing ankle
+kick_lift_ms = 300
+impact_ms_punch = 200         # impact = closest approach to the opponent within this after the peak
+impact_ms_kick = 400          # kicks unfold slower
+lookback_ms = 300             # how far back travel is measured
+support_ms = 100              # neighbours of a speed peak; a one-frame keypoint jump has none
+support_frac = 0.2
+min_support = 1
+
+# Gates
+min_ext_punch = 0.5           # wrist-to-shoulder at impact; hooks and body shots are bent-arm
+min_ext_kick = 0.6            # ankle-to-hip at impact (kicks foreshorten in 2D)
+min_punch_travel = 0.35       # the wrist must have moved this far
+min_kick_travel = 0.5
+min_reach = 0.3               # tip forward of the striker's own shoulder or hip, toward the opponent
+clinch_range = 0.9            # hip-to-hip closer than this = clinch or pocket
+clinch_speed_mult = 1.25      # speed thresholds x this in the clinch
+cut_guard_ms = 300            # nothing near a camera cut counts
+cooldown_ms_punch = 300       # same hand again
+cooldown_ms_kick = 500        # same leg again
+min_gap_ms = 150              # any two strikes by one fighter
+combo_ms = 500                # inside a combination...
+combo_relax = 0.6             # ...extension, reach, and travel gates x this
+
+# Landed, missed, and target
+land_dist = 0.35              # tip within this of the target = landed
+land_dist_kick_tight = 0.12   # a body or leg kick lands on distance alone only this close...
+body_react_speed = 1.5        # ...otherwise the opponent's hips must move this fast (torso/s)
+head_react_speed = 0.9        # an opponent head snap that confirms a landed shot
+max_react_speed = 15.0        # faster "reactions" are keypoint jumps
+react_ms = 200
+react_baseline_ms = 300
+max_miss_dist_punch = 0.9     # misses further than this are hand-fighting, dropped
+max_miss_dist_kick = 1.4
+miss_speed_mult = 1.3         # a miss must be this much faster than the speed threshold

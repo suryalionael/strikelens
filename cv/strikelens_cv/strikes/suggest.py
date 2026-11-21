@@ -12,11 +12,20 @@ from typing import Any
 from strikelens_cv import __version__
 from strikelens_cv.paths import CONFIG_DIR, processed_dir
 from strikelens_cv.strikes.config import WindowsConfig
-from strikelens_cv.strikes.infer import pick_peaks, select, suggestions
+from strikelens_cv.strikes.geometry import (
+    GeometryConfig,
+    build_series,
+    detect,
+)
+from strikelens_cv.strikes.infer import Peak, pick_peaks, select, suggestions
 from strikelens_cv.strikes.models import StrikeModel, load_model
 from strikelens_cv.strikes.windows import cut_window, missing_share
 
 DEFAULT_INFER_CONFIG = CONFIG_DIR / "infer.toml"
+DEFAULT_GEOMETRY_CONFIG = CONFIG_DIR / "geometry.toml"
+CANDIDATES_FILE = "strike-candidates.json"
+GEOMETRY_MODEL = "geometry"
+GEOMETRY_VERSION = "1"
 SUGGESTIONS_FILE = "strike-suggestions.json"
 BULK_LIMIT = 1000  # tags per request, well under the API's limit
 
@@ -41,6 +50,54 @@ class InferConfig:
             raise ValueError("merge_gap_ms must be at least 0")
         if self.max_per_round < 1:
             raise ValueError("max_per_round must be at least 1")
+
+
+def load_geometry_config(path: Path = DEFAULT_GEOMETRY_CONFIG) -> GeometryConfig:
+    """Read the geometry model's thresholds. Unknown keys are an error."""
+    with path.open("rb") as handle:
+        raw = tomllib.load(handle)
+    unknown = sorted(set(raw) - set(GeometryConfig.__dataclass_fields__))
+    if unknown:
+        raise ValueError(f"unknown geometry settings in {path.name}: {', '.join(unknown)}")
+    return GeometryConfig(**raw)
+
+
+def geometry_candidates(
+    corners: Mapping[str, Sequence[Mapping[str, Any]]],
+    shots: Sequence[Mapping[str, Any]],
+    config: GeometryConfig,
+) -> list[dict[str, Any]]:
+    """Run the geometry model on both corners' keypoint frames. Pure: data in, data out.
+    The time grid is every frame time either corner has; a cut starts each new shot."""
+    times = sorted({int(f["timestamp_ms"]) for frames in corners.values() for f in frames})
+    starts = sorted(int(s["start_ms"]) for s in shots)[1:]
+    cuts, k = [False] * len(times), 0
+    for i, t in enumerate(times):
+        while k < len(starts) and starts[k] <= t:
+            cuts[i], k = True, k + 1
+    series = {
+        corner: build_series(times, {int(f["timestamp_ms"]): f for f in frames}, cuts, config)
+        for corner, frames in corners.items()
+    }
+    return [dict(c) for c in detect(series, cuts, config)]  # type: ignore[arg-type]
+
+
+def geometry_peaks(candidates: Sequence[Mapping[str, Any]]) -> dict[str, list[Peak]]:
+    """Accepted candidates as suggestion peaks, with weapon, outcome, and target."""
+    peaks: dict[str, list[Peak]] = {"red": [], "blue": []}
+    for c in candidates:
+        if c["rejected_by"]:
+            continue
+        peaks[c["fighter"]].append(
+            {
+                "timestamp_ms": int(c["time_ms"]),
+                "score": float(c["confidence"]),
+                "weapon": c["weapon"],
+                "outcome": "landed" if c["landed"] else "missed",
+                "target": c["target"],
+            }
+        )
+    return peaks
 
 
 def load_infer_config(path: Path = DEFAULT_INFER_CONFIG) -> InferConfig:
@@ -164,6 +221,7 @@ def suggest_strikes(
     config: InferConfig,
     api_url: str | None = None,
     replace: bool = False,
+    geometry_config: Path = DEFAULT_GEOMETRY_CONFIG,
 ) -> SuggestResult:
     """Score both fighters, pick peaks, keep one per moment and a budget per round
     (`select`), and write strike-suggestions.json. With `api_url`, also post them to
@@ -178,14 +236,25 @@ def suggest_strikes(
     )
     if not fight_data.get("rounds"):
         raise ValueError("fight.json has no rounds; mark them in the tagger and save it again")
-    model = load_model(config.model)
-    peaks = {}
+    corners: dict[str, list[dict[str, Any]]] = {}
     for corner in ("red", "blue"):
         data = _read(out_dir / "keypoints" / f"{corner}.json", "run strikelens-cv pose first")
-        frames = sorted(data["frames"], key=lambda f: f["timestamp_ms"])
-        times, scores, weapons = score_corner(frames, fight_data["rounds"], model, windows, config)
-        peaks[corner] = pick_peaks(times, scores, weapons, config.threshold, config.min_gap_ms)
-    created_by = f"{model.name}@{model.version}"
+        corners[corner] = sorted(data["frames"], key=lambda f: f["timestamp_ms"])
+    peaks: dict[str, list[Peak]] = {}
+    if config.model == GEOMETRY_MODEL:
+        shots = _read(out_dir / "cuts.json", "run strikelens-cv ingest first")["shots"]
+        candidates = geometry_candidates(corners, shots, load_geometry_config(geometry_config))
+        (out_dir / CANDIDATES_FILE).write_text(json.dumps(candidates, indent=1) + "\n")
+        peaks = geometry_peaks(candidates)
+        created_by = f"{GEOMETRY_MODEL}@{GEOMETRY_VERSION}"
+    else:
+        model = load_model(config.model)
+        for corner, frames in corners.items():
+            times, scores, weapons = score_corner(
+                frames, fight_data["rounds"], model, windows, config
+            )
+            peaks[corner] = pick_peaks(times, scores, weapons, config.threshold, config.min_gap_ms)
+        created_by = f"{model.name}@{model.version}"
     fight_id = str(fight_data["id"])
     existing = fight_tags(api_url, fight_id) if api_url else []
     stale = replaceable(existing, created_by) if replace else []

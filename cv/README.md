@@ -395,6 +395,16 @@ tagged fights. It stands in until a trained model exists (#24), which plugs in
 behind `StrikeModel` in `strikes/models.py` and has to beat it. See
 [ADR 0009](../docs/decisions/0009-strike-suggestions.md).
 
+`model = "geometry"` uses rules over both fighters' poses instead, ported from
+[mma-vision](https://github.com/BinyamAbraha/mma-vision) by Binyam Abraha
+([ADR 0011](../docs/decisions/0011-geometry-strike-model.md)). A strike is a wrist or
+ankle moving fast toward the opponent that ends extended, has travelled, and (for a
+kick) lifts the foot. It prefills the weapon (jab from the lead hand, cross from the
+rear, or kick), the outcome (landed by contact or a head snap, else missed; never
+blocked), and the target. Settings are in `configs/geometry.toml`. Every candidate,
+with the gate that rejected it, is written to
+`data/processed/<fight>/strike-candidates.json`, to see why a strike was missed.
+
 ## Overlay
 
 Draws the red and blue boxes, their skeletons, and a strike timeline onto the
