@@ -118,6 +118,13 @@ and the project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - The target is optional on a confirmed tag. Enter saves a tag without one, and
   confirms a suggestion once it has a weapon and an outcome. Target shares cover
   the strikes that have a target (ADR 0010, #79).
+- Geometry strike model, ported from mma-vision by Binyam Abraha: rules over both
+  fighters' poses that prefill weapon, outcome, and target, and log every rejected
+  candidate. Opt-in (`model = "geometry"`): measured on a real fight it is not yet
+  better than the motion baseline (ADR 0011, #81).
+- Overlay stat panel: round, clock, and per-fighter thrown, landed, and accuracy,
+  counted live from confirmed tags, plus a label above the fighter after each
+  strike. Names with `--red` and `--blue` (#22).
 
 ### Fixed
 
