@@ -11,7 +11,7 @@ import uuid
 from bisect import insort
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
-from typing import Any, TypedDict
+from typing import Any, NotRequired, TypedDict
 
 # Fixed, so the same model on the same fight gives the same tag ids: posting the
 # same suggestions twice is then refused as a duplicate instead of doubling them.
@@ -22,6 +22,9 @@ class Peak(TypedDict):
     timestamp_ms: int
     score: float
     weapon: str | None
+    # A model that judges the outcome and target too (the geometry model) sets these.
+    outcome: NotRequired[str | None]
+    target: NotRequired[str | None]
 
 
 def pick_peaks(
@@ -89,8 +92,8 @@ def suggestions(
                     "timestamp_ms": t,
                     "fighter": corner,
                     "weapon": peak["weapon"],
-                    "outcome": None,
-                    "target": None,
+                    "outcome": peak.get("outcome"),
+                    "target": peak.get("target"),
                     "source": "cv",
                     "confidence": round(min(1.0, max(0.0, peak["score"])), 3),
                     "status": "pending",
